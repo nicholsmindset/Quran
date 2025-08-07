@@ -7,23 +7,23 @@ DECLARE
     table_count INTEGER;
     missing_tables TEXT[] := ARRAY[]::TEXT[];
     expected_tables TEXT[] := ARRAY['users', 'verses', 'questions', 'attempts', 'streaks', 'quiz_sessions', 'daily_challenges', 'user_progress', 'audit_logs'];
-    table_name TEXT;
+    current_table TEXT;
 BEGIN
     RAISE NOTICE '🕌 Verifying Quran Verse Challenge Database Setup...';
     RAISE NOTICE '';
     
     -- Check each expected table
-    FOREACH table_name IN ARRAY expected_tables
+    FOREACH current_table IN ARRAY expected_tables
     LOOP
         SELECT COUNT(*) INTO table_count 
         FROM information_schema.tables 
-        WHERE table_name = table_name AND table_schema = 'public';
+        WHERE table_name = current_table AND table_schema = 'public';
         
         IF table_count = 0 THEN
-            missing_tables := array_append(missing_tables, table_name);
-            RAISE NOTICE '❌ Missing table: %', table_name;
+            missing_tables := array_append(missing_tables, current_table);
+            RAISE NOTICE '❌ Missing table: %', current_table;
         ELSE
-            RAISE NOTICE '✅ Table exists: %', table_name;
+            RAISE NOTICE '✅ Table exists: %', current_table;
         END IF;
     END LOOP;
     
