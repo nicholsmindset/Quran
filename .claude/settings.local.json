@@ -25,7 +25,8 @@
       "Bash(cd:*)",
       "Bash(cd:*)",
       "Bash(git push origin main)",
-      "Bash(cd:*)"
+      "Bash(cd:*)",
+      "Bash(rm:*)"
     ],
     "deny": []
   }

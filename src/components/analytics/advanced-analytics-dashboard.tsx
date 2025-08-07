@@ -805,7 +805,7 @@ export function AdvancedAnalyticsDashboard({
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <div className="flex justify-between text-sm">
-                      <span>High Performers (>95% SLA)</span>
+                      <span>High Performers (&gt;95% SLA)</span>
                       <span>142 scholars</span>
                     </div>
                     <Progress value={75.1} className="h-2" />
@@ -819,7 +819,7 @@ export function AdvancedAnalyticsDashboard({
                   </div>
                   <div className="space-y-2">
                     <div className="flex justify-between text-sm">
-                      <span>Needs Support (<85% SLA)</span>
+                      <span>Needs Support (&lt;85% SLA)</span>
                       <span>9 scholars</span>
                     </div>
                     <Progress value={4.8} className="h-2" />

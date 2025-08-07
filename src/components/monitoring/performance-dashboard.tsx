@@ -15,7 +15,7 @@ import {
   Cpu,
   Database,
   Globe,
-  Memory,
+  HardDriveIcon,
   Monitor,
   RefreshCw,
   TrendingDown,
@@ -330,7 +330,7 @@ export function PerformanceDashboard({
               value={summaryData?.data?.summary?.find((m: any) => m.metric_name === 'memory_used')?.avg_value || 0}
               unit="MB"
               budget={100}
-              icon={Memory}
+              icon={HardDriveIcon}
               trend={8.1}
               isLowerBetter
             />
@@ -600,7 +600,7 @@ export function PerformanceDashboard({
               value={healthData?.data?.snapshots?.[0]?.memory_usage_mb || 0}
               unit="MB"
               budget={512}
-              icon={Memory}
+              icon={HardDriveIcon}
               isLowerBetter
             />
             <MetricCard
