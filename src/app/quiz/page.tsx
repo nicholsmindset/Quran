@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useAuth } from '@/providers/auth-provider';
-import { ProtectedRoute } from '@/components/auth/protected-route';
 import { Navbar } from '@/components/layout/navbar';
 import { DailyQuizLanding } from '@/components/quiz/daily-quiz-landing';
 import { QuizInterface } from '@/components/quiz/quiz-interface';
@@ -126,72 +125,64 @@ export default function QuizPage() {
   // Show loading state
   if (isLoading) {
     return (
-      <ProtectedRoute>
-        <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-teal-50">
-          <Navbar />
-          <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <div className="flex items-center justify-center h-64">
-              <div className="text-center">
-                <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-emerald-600" />
-                <p className="text-muted-foreground">Loading your daily quiz...</p>
-              </div>
+      <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-teal-50">
+        <Navbar />
+        <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-emerald-600" />
+              <p className="text-muted-foreground">Loading your daily quiz...</p>
             </div>
-          </main>
-        </div>
-      </ProtectedRoute>
+          </div>
+        </main>
+      </div>
     );
   }
 
   // Show quiz taking interface
   if (mode === 'taking' && currentSession) {
     return (
-      <ProtectedRoute>
-        <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-teal-50">
-          <Navbar />
-          <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <QuizInterface 
-              session={currentSession}
-              onComplete={handleQuizComplete}
-              onBackToLanding={() => setMode('landing')}
-            />
-          </main>
-        </div>
-      </ProtectedRoute>
+      <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-teal-50">
+        <Navbar />
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <QuizInterface 
+            session={currentSession}
+            onComplete={handleQuizComplete}
+            onBackToLanding={() => setMode('landing')}
+          />
+        </main>
+      </div>
     );
   }
 
   // Show results interface
   if (mode === 'results' && quizResult) {
     return (
-      <ProtectedRoute>
-        <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-teal-50">
-          <Navbar />
-          <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <QuizResults 
-              result={quizResult}
-              onReturnToDashboard={handleReturnToDashboard}
-              onTakeAnother={handleTakeAnother}
-            />
-          </main>
-        </div>
-      </ProtectedRoute>
+      <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-teal-50">
+        <Navbar />
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <QuizResults 
+            result={quizResult}
+            onReturnToDashboard={handleReturnToDashboard}
+            onTakeAnother={handleTakeAnother}
+          />
+        </main>
+      </div>
     );
   }
 
   // Show daily quiz landing page (default)
   return (
-    <ProtectedRoute>
-      <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-teal-50">
-        <Navbar />
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <DailyQuizLanding 
-            quizStatus={quizStatus}
-            onStartQuiz={handleStartQuiz}
-            onResumeQuiz={handleResumeQuiz}
-            isStarting={startQuizMutation.isPending}
-          />
-        </main>
-      </div>
-    </ProtectedRoute>
+    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-teal-50">
+      <Navbar />
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <DailyQuizLanding 
+          quizStatus={quizStatus}
+          onStartQuiz={handleStartQuiz}
+          onResumeQuiz={handleResumeQuiz}
+          isStarting={startQuizMutation.isPending}
+        />
+      </main>
+    </div>
   );
 }

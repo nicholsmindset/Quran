@@ -43,7 +43,6 @@ export function LoginForm({ onToggleMode }: LoginFormProps) {
       toast({
         title: 'Welcome back!',
         description: 'You have been signed in successfully.',
-        variant: 'success',
       });
     } catch (error) {
       toast({
