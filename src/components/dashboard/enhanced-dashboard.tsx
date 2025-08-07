@@ -78,7 +78,31 @@ export function EnhancedDashboard({ className }: EnhancedDashboardProps) {
           correctAnswers: 18,
           averageScore: 72,
           questionsThisMonth: 12,
-          accurracyTrend: '+5%'
+          accurracyTrend: '+5%',
+          overview: {
+            totalAttempts: 85,
+            correctAnswers: 68,
+            averageScore: 80,
+            accuracy: 80, // percentage
+            streakDays: 3,
+            totalTimeSpent: 12600000, // 3.5 hours in milliseconds
+            questionsThisWeek: 15,
+            questionsThisMonth: 48,
+            averageTimePerQuestion: 148000, // 2.5 minutes
+            improvementRate: 0.12,
+            activeDays: 12,
+            completionRate: 85
+          },
+          trends: {
+            isImproving: true,
+            accuracyTrend: '+5%',
+            streakTrend: '+2',
+            activityTrend: '+3%'
+          },
+          streaks: {
+            current: 3,
+            longest: 7
+          }
         },
         dailyQuizStatus: {
           available: true,
