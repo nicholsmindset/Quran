@@ -1,36 +1,54 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Qur’an Verse Challenge
 
-## Getting Started
+AI-native SaaS to help learners memorise and understand Qur’anic verses via daily quizzes, streaks, and scholar-verified explanations.
 
-First, run the development server:
+## Quickstart
+
+- Prerequisites:
+  - Postgres 15+ (Supabase recommended)
+  - Node 20+ (frontend/backend to be added in Sprint 2)
+  - Redis (for agent queues)
+- Environment variables (example `.env`):
+  - `SUPABASE_URL=...`
+  - `SUPABASE_ANON_KEY=...`
+  - `SUPABASE_SERVICE_ROLE_KEY=...`
+  - `OPENAI_API_KEY=...`
+  - `POSTHOG_API_KEY=...`
+  - `STRIPE_SECRET_KEY=...`
+  - `REDIS_URL=redis://...`
+
+### Database
+
+1) Apply schema
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+psql "$DATABASE_URL" -f db/schema.sql
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2) Seed minimal content
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+psql "$DATABASE_URL" -f db/seed/seed.sql
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+3) Verify RLS
 
-## Learn More
+- Ensure queries as anonymous user cannot read unapproved questions.
+- Ensure a teacher can read attempts of their group members.
 
-To learn more about Next.js, take a look at the following resources:
+## Project Structure
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- `db/` — SQL schema, RLS, helper functions, seeds
+- `api/` — OpenAPI spec and (later) route handlers
+- `docs/` — Architecture, decisions, runbooks
+- `agents/` — Agent roles and queue contracts
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Milestones (from PRD)
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Sprint 0: Repo, Vercel, Supabase, CI
+- Sprint 1: DB schema, auth flow, verse seeding
+- Sprint 2: Quiz API, basic Next.js pages
+- Sprint 3: Scholar moderation UI, invites
+- Sprint 4: Daily challenge cron, progress dashboard
+- Sprint 5: QA hardening, load test, open beta
+- Sprint 6: Payments, public launch
