@@ -24,6 +24,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const supabase = createBrowserSupabaseClient();
 
   useEffect(() => {
+    // Set a timeout to prevent infinite loading
+    const loadingTimeout = setTimeout(() => {
+      console.warn('Authentication loading timeout - forcing completion');
+      setLoading(false);
+    }, 10000); // 10 second timeout
+
     const getSession = async () => {
       try {
         const {
@@ -31,24 +37,31 @@ export function AuthProvider({ children }: AuthProviderProps) {
         } = await supabase.auth.getSession();
         
         if (session?.user) {
-          const { data: profile } = await supabase
+          const { data: profile, error: profileError } = await supabase
             .from('users')
             .select('*')
             .eq('id', session.user.id)
             .single();
           
-          if (profile) {
+          if (profile && !profileError) {
             setUser({
               id: profile.id,
               email: profile.email,
               role: profile.role,
               createdAt: new Date(profile.created_at),
             });
+          } else {
+            console.log('No user profile found or error:', profileError);
+            setUser(null);
           }
+        } else {
+          setUser(null);
         }
       } catch (error) {
         console.error('Error getting session:', error);
+        setUser(null);
       } finally {
+        clearTimeout(loadingTimeout);
         setLoading(false);
       }
     };
@@ -59,26 +72,32 @@ export function AuthProvider({ children }: AuthProviderProps) {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' && session?.user) {
-        const { data: profile } = await supabase
+        const { data: profile, error: profileError } = await supabase
           .from('users')
           .select('*')
           .eq('id', session.user.id)
           .single();
         
-        if (profile) {
+        if (profile && !profileError) {
           setUser({
             id: profile.id,
             email: profile.email,
             role: profile.role,
             createdAt: new Date(profile.created_at),
           });
+        } else {
+          console.log('No user profile found or error:', profileError);
+          setUser(null);
         }
       } else if (event === 'SIGNED_OUT') {
         setUser(null);
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      clearTimeout(loadingTimeout);
+      subscription.unsubscribe();
+    };
   }, [supabase]);
 
   const signIn = async (email: string, password: string) => {
