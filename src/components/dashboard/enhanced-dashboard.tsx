@@ -57,6 +57,15 @@ interface DashboardData {
     breakdown: {
       byDifficulty: Record<string, { attempted: number; correct: number; accuracy: number }>;
       topSurahs: Array<{ name: string; attempted: number; correct: number; accuracy: number }>;
+      recentActivity: Array<{
+        id: string;
+        type: string;
+        title: string;
+        description: string;
+        timestamp: Date;
+        score?: number;
+        metadata?: Record<string, unknown>;
+      }>;
     };
   };
   dailyQuizStatus: {
@@ -70,15 +79,6 @@ interface DashboardData {
   recommendations: Array<{ title: string; type: string; priority: string }>;
   achievements: Array<{ name: string; unlocked: boolean; progress: number }>;
   streakData: { current: number; longest: number };
-  recentActivity: Array<{
-    id: string;
-    type: string;
-    title: string;
-    description: string;
-    timestamp: Date;
-    score?: number;
-    metadata?: Record<string, unknown>;
-  }>;
 }
 
 export function EnhancedDashboard({ className }: EnhancedDashboardProps) {
@@ -139,6 +139,67 @@ export function EnhancedDashboard({ className }: EnhancedDashboardProps) {
               { name: 'Al-Baqarah', attempted: 15, correct: 12, accuracy: 80 },
               { name: 'Al-Imran', attempted: 12, correct: 9, accuracy: 75 },
             ],
+            recentActivity: [
+              {
+                id: '1',
+                type: 'quiz_completed',
+                title: 'Daily Quiz Completed',
+                description: "Scored 85% on today's quiz",
+                score: 85,
+                timestamp: new Date(),
+                metadata: { surah: 'Al-Fatiha', difficulty: 'medium' },
+              },
+              {
+                id: '2',
+                type: 'study_session',
+                title: 'Practice Session',
+                description: '15 minute study session completed',
+                timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000),
+                metadata: { duration: 15 },
+              },
+              {
+                id: '3',
+                type: 'streak_milestone',
+                title: '3 Day Streak!',
+                description: 'Keep up the consistent learning',
+                timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000),
+                metadata: { streakDays: 3 },
+              },
+              {
+                id: '4',
+                type: 'quiz_completed',
+                title: 'Al-Baqarah Quiz',
+                description: 'Completed quiz on verses 1-20',
+                score: 92,
+                timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+                metadata: { surah: 'Al-Baqarah', difficulty: 'medium' },
+              },
+              {
+                id: '5',
+                type: 'achievement_unlocked',
+                title: 'Achievement: Week Warrior',
+                description: '7 days of consistent practice',
+                timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
+                metadata: { achievementType: 'streak' },
+              },
+              {
+                id: '6',
+                type: 'study_session',
+                title: 'Tafsir Study',
+                description: 'Studied interpretation of Al-Fatiha',
+                timestamp: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000),
+                metadata: { surah: 'Al-Fatiha', type: 'tafsir' },
+              },
+              {
+                id: '7',
+                type: 'quiz_completed',
+                title: 'Weekly Challenge',
+                description: 'Mixed questions from various Surahs',
+                score: 78,
+                timestamp: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
+                metadata: { difficulty: 'hard', questionCount: 20 },
+              },
+            ],
           },
         },
         dailyQuizStatus: {
@@ -157,33 +218,6 @@ export function EnhancedDashboard({ className }: EnhancedDashboardProps) {
           { name: 'Month Master', unlocked: false, progress: 60 },
         ],
         streakData: { current: 3, longest: 7 },
-        recentActivity: [
-          {
-            id: '1',
-            type: 'quiz_completed',
-            title: 'Daily Quiz Completed',
-            description: "Scored 85% on today's quiz",
-            score: 85,
-            timestamp: new Date(),
-            metadata: { surah: 'Al-Fatiha', difficulty: 'medium' },
-          },
-          {
-            id: '2',
-            type: 'quiz_completed',
-            title: 'Practice Session',
-            description: '15 minute study session completed',
-            timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000),
-            metadata: { duration: 15 },
-          },
-          {
-            id: '3',
-            type: 'streak_milestone',
-            title: '3 Day Streak!',
-            description: 'Keep up the consistent learning',
-            timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
-            metadata: { streakDays: 3 },
-          },
-        ],
       };
     },
     refetchInterval: 30000, // Refresh every 30 seconds for real-time updates
