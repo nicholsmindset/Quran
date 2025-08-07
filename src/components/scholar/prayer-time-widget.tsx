@@ -95,7 +95,7 @@ export function PrayerTimeWidget() {
     
     const now = new Date();
     const [hours, minutes] = nextPrayer.time.split(':').map(Number);
-    let nextPrayerTime = new Date();
+    const nextPrayerTime = new Date();
     nextPrayerTime.setHours(hours, minutes, 0, 0);
     
     // If prayer has passed today, set it for tomorrow

@@ -202,7 +202,7 @@ export function EnhancedModerationDashboard({ scholarId, user }: EnhancedModerat
 
   // Smart question grouping and sorting
   const processedQuestions = useMemo(() => {
-    let processed = [...questions];
+    const processed = [...questions];
     
     // Apply smart sorting
     processed.sort((a, b) => {

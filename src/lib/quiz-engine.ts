@@ -88,7 +88,7 @@ async function selectBalancedQuestions(): Promise<Question[]> {
 
   for (const { level, count } of difficulties) {
     // Get available questions for this difficulty
-    let query = supabase
+    const query = supabase
       .from('questions')
       .select(`
         id,

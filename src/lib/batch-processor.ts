@@ -63,7 +63,7 @@ export class BatchProcessor {
 
       // Process verses in smaller batches to manage memory and API rate limits
       const batchSize = 10;
-      let totalStats = {
+      const totalStats = {
         versesProcessed: 0,
         questionsGenerated: 0,
         questionsSaved: 0,

@@ -28,7 +28,7 @@
     "ai:test": "tsx scripts/test-ai-generation.ts",
     "ai:batch": "tsx -e \"import('./src/lib/batch-processor.js').then(m => m.BatchProcessor).then(BP => new BP().processBatch())\"",
     "sample:questions": "tsx scripts/sample-questions.ts",
-    "prepare": "husky"
+    "prepare": "node -e \"try { if (process.env.NODE_ENV !== 'production') require('husky').install() } catch (e) { console.log('Husky not available in production') }\""
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.1",

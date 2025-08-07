@@ -1,6 +1,6 @@
 [build]
   publish = ".next"
-  command = "npm ci --legacy-peer-deps --ignore-scripts && npm run build"
+  command = "npm ci --legacy-peer-deps && npm run build"
 
 [build.environment]
   NODE_VERSION = "22"

@@ -116,7 +116,7 @@ export async function GET(request: NextRequest) {
     startDate.setDate(endDate.getDate() - days)
 
     // Get quiz sessions as activity indicators
-    let query = supabase
+    const query = supabase
       .from('quiz_sessions')
       .select(`
         id,
