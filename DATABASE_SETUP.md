@@ -17,9 +17,10 @@ The error occurs because the database tables haven't been created in your Supaba
    - Paste it into the SQL Editor
    - Click "Run" button
 
-3. **Verify Tables Created**
-   - Go to "Table Editor" in the sidebar
-   - You should see tables: `users`, `verses`, `questions`, `attempts`, etc.
+3. **Verify Setup Worked**
+   - Copy contents of `scripts/verify-database.sql`
+   - Paste and run in SQL Editor  
+   - Should show ✅ for all checks and "DATABASE SETUP COMPLETE!"
 
 ### **Step 2: Optional AI Features (Run AFTER Step 1)**
 If you want advanced AI features:

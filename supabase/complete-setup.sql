@@ -202,25 +202,78 @@ INSERT INTO verses (surah, ayah, arabic_text, translation_en) VALUES
 (2, 255, 'اللَّهُ لَا إِلَـٰهَ إِلَّا هُوَ الْحَيُّ الْقَيُّومُ', 'Allah - there is no deity except Him, the Ever-Living, the Self-Sustaining.')
 ON CONFLICT (surah, ayah) DO NOTHING;
 
--- Insert sample questions (these will need approval)
+-- Create a system user for sample data if none exists
 DO $$
 DECLARE
+    system_user_uuid UUID;
     verse_uuid UUID;
 BEGIN
+    -- Create or get system user for sample data
+    INSERT INTO users (email, role)
+    VALUES ('system@quranversechallenge.com', 'scholar')
+    ON CONFLICT (email) DO UPDATE SET role = 'scholar'
+    RETURNING id INTO system_user_uuid;
+    
+    -- Get system user id if insert was skipped due to conflict
+    IF system_user_uuid IS NULL THEN
+        SELECT id INTO system_user_uuid FROM users WHERE email = 'system@quranversechallenge.com';
+    END IF;
+    
     -- Get Al-Fatiha verse 1
     SELECT id INTO verse_uuid FROM verses WHERE surah = 1 AND ayah = 1 LIMIT 1;
     
-    IF verse_uuid IS NOT NULL THEN
-        INSERT INTO questions (verse_id, prompt, choices, answer, difficulty, status)
+    -- Insert sample questions with proper created_by
+    IF verse_uuid IS NOT NULL AND system_user_uuid IS NOT NULL THEN
+        INSERT INTO questions (verse_id, prompt, choices, answer, difficulty, status, created_by, approved_at)
         VALUES (
             verse_uuid,
             'What is the meaning of "بِسْمِ اللَّهِ الرَّحْمَـٰنِ الرَّحِيمِ"?',
             '["In the name of Allah, the Entirely Merciful, the Especially Merciful", "All praise is due to Allah", "There is no god but Allah", "Allah is the Greatest"]'::jsonb,
             'In the name of Allah, the Entirely Merciful, the Especially Merciful',
             'easy',
-            'approved'
+            'approved',
+            system_user_uuid,
+            NOW()
         )
         ON CONFLICT DO NOTHING;
+        
+        -- Add a few more sample questions
+        SELECT id INTO verse_uuid FROM verses WHERE surah = 1 AND ayah = 2 LIMIT 1;
+        IF verse_uuid IS NOT NULL THEN
+            INSERT INTO questions (verse_id, prompt, choices, answer, difficulty, status, created_by, approved_at)
+            VALUES (
+                verse_uuid,
+                'What does "الْحَمْدُ لِلَّهِ رَبِّ الْعَالَمِينَ" mean?',
+                '["All praise is due to Allah, Lord of the worlds", "In the name of Allah", "There is no god but Allah", "Guide us to the straight path"]'::jsonb,
+                'All praise is due to Allah, Lord of the worlds',
+                'easy',
+                'approved',
+                system_user_uuid,
+                NOW()
+            )
+            ON CONFLICT DO NOTHING;
+        END IF;
+        
+        -- Add a medium difficulty question
+        SELECT id INTO verse_uuid FROM verses WHERE surah = 2 AND ayah = 255 LIMIT 1;
+        IF verse_uuid IS NOT NULL THEN
+            INSERT INTO questions (verse_id, prompt, choices, answer, difficulty, status, created_by, approved_at)
+            VALUES (
+                verse_uuid,
+                'Ayat al-Kursi states that Allah is which of the following?',
+                '["The Ever-Living, the Self-Sustaining", "The First and the Last", "The Most Gracious, Most Merciful", "The King of the Day of Judgment"]'::jsonb,
+                'The Ever-Living, the Self-Sustaining',
+                'medium',
+                'approved',
+                system_user_uuid,
+                NOW()
+            )
+            ON CONFLICT DO NOTHING;
+        END IF;
+        
+        RAISE NOTICE 'Sample questions inserted successfully with system user: %', system_user_uuid;
+    ELSE
+        RAISE WARNING 'Could not insert sample questions - missing verse or user data';
     END IF;
 END $$;
 
@@ -456,10 +509,15 @@ RETURNS UUID AS $$
 DECLARE
     admin_id UUID;
 BEGIN
-    INSERT INTO users (id, email, role)
-    VALUES (gen_random_uuid(), admin_email, 'scholar')
+    INSERT INTO users (email, role)
+    VALUES (admin_email, 'scholar')
     ON CONFLICT (email) DO UPDATE SET role = 'scholar'
     RETURNING id INTO admin_id;
+    
+    -- Get the id if the insert was skipped due to conflict
+    IF admin_id IS NULL THEN
+        SELECT id INTO admin_id FROM users WHERE email = admin_email;
+    END IF;
     
     RETURN admin_id;
 END;
