@@ -23,7 +23,8 @@
       "Bash(vercel:*)",
       "Bash(git remote add:*)",
       "Bash(cd:*)",
-      "Bash(cd:*)"
+      "Bash(cd:*)",
+      "Bash(git push origin main)"
     ],
     "deny": []
   }

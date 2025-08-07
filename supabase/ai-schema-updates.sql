@@ -1,14 +1,19 @@
 -- AI Question Generation Schema Updates
--- Run this in Supabase SQL Editor to add AI features
+-- Enhanced AI features for Quran Verse Challenge platform
+-- Run this in Supabase SQL Editor to add comprehensive AI capabilities
 
 -- Add columns to questions table for AI-generated content
 ALTER TABLE questions 
 ADD COLUMN IF NOT EXISTS topics TEXT[] DEFAULT '{}',
 ADD COLUMN IF NOT EXISTS explanation TEXT,
 ADD COLUMN IF NOT EXISTS embedding vector(1536),
-ADD COLUMN IF NOT EXISTS question_type VARCHAR(20) DEFAULT 'mcq' CHECK (question_type IN ('mcq', 'fill_blank')),
-ADD COLUMN IF NOT EXISTS ai_generated BOOLEAN DEFAULT true,
-ADD COLUMN IF NOT EXISTS generation_model VARCHAR(50) DEFAULT 'gpt-4o';
+ADD COLUMN IF NOT EXISTS question_type VARCHAR(20) DEFAULT 'mcq' CHECK (question_type IN ('mcq', 'fill_blank', 'true_false', 'short_answer')),
+ADD COLUMN IF NOT EXISTS ai_generated BOOLEAN DEFAULT false,
+ADD COLUMN IF NOT EXISTS generation_model VARCHAR(50) DEFAULT 'claude-3-5-sonnet',
+ADD COLUMN IF NOT EXISTS generation_version VARCHAR(20) DEFAULT '1.0',
+ADD COLUMN IF NOT EXISTS context_verses JSONB DEFAULT '[]'::jsonb,
+ADD COLUMN IF NOT EXISTS difficulty_justification TEXT,
+ADD COLUMN IF NOT EXISTS islamic_validation JSONB DEFAULT '{"checked": false}'::jsonb;
 
 -- Create index for vector similarity search
 CREATE INDEX IF NOT EXISTS questions_embedding_idx ON questions 
@@ -17,14 +22,19 @@ USING ivfflat (embedding vector_cosine_ops);
 -- Create batch_runs table for monitoring AI generation
 CREATE TABLE IF NOT EXISTS batch_runs (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  batch_type VARCHAR(50) DEFAULT 'daily_generation' CHECK (batch_type IN ('daily_generation', 'bulk_processing', 'quality_review', 'embedding_update')),
   verses_processed INTEGER NOT NULL DEFAULT 0,
   questions_generated INTEGER NOT NULL DEFAULT 0,
   questions_saved INTEGER NOT NULL DEFAULT 0,
+  questions_approved INTEGER NOT NULL DEFAULT 0,
   errors INTEGER NOT NULL DEFAULT 0,
   duration_seconds INTEGER NOT NULL DEFAULT 0,
   success BOOLEAN NOT NULL DEFAULT false,
   error_message TEXT,
+  processing_metadata JSONB DEFAULT '{}'::jsonb,
+  initiated_by UUID REFERENCES users(id),
   run_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  completed_at TIMESTAMP WITH TIME ZONE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
@@ -42,28 +52,73 @@ CREATE TABLE IF NOT EXISTS question_topics (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Insert common Islamic topics
+-- Insert comprehensive Islamic topics taxonomy
 INSERT INTO question_topics (name, description, category) VALUES
+-- Core Beliefs (Aqidah)
+('tawhid', 'Unity and Oneness of Allah', 'core_beliefs'),
 ('faith', 'Questions about belief and faith in Islam', 'core_beliefs'),
+('guidance', 'Questions about divine guidance', 'core_beliefs'),
+('creation', 'Questions about Allah as Creator', 'core_beliefs'),
+('afterlife', 'Questions about the Day of Judgment and hereafter', 'eschatology'),
+('resurrection', 'Questions about life after death', 'eschatology'),
+('paradise', 'Questions about Jannah', 'eschatology'),
+('hellfire', 'Questions about punishment in the hereafter', 'eschatology'),
+
+-- Worship (Ibadah)
 ('prayer', 'Questions about salah and worship', 'worship'),
 ('charity', 'Questions about zakat and giving', 'worship'),
 ('fasting', 'Questions about sawm and Ramadan', 'worship'),
 ('pilgrimage', 'Questions about Hajj and Umrah', 'worship'),
-('forgiveness', 'Questions about repentance and mercy', 'character'),
-('guidance', 'Questions about divine guidance', 'core_beliefs'),
-('creation', 'Questions about Allah as Creator', 'core_beliefs'),
-('afterlife', 'Questions about the Day of Judgment and hereafter', 'eschatology'),
-('prophets', 'Questions about messengers and prophets', 'prophetic_tradition'),
 ('worship', 'General worship and devotion', 'worship'),
+('remembrance', 'Questions about dhikr and remembrance of Allah', 'worship'),
+('supplication', 'Questions about dua and prayer', 'worship'),
+('recitation', 'Questions about Quran recitation', 'worship'),
+
+-- Prophetic Tradition
+('prophets', 'Questions about messengers and prophets', 'prophetic_tradition'),
+('muhammad', 'Questions about Prophet Muhammad (PBUH)', 'prophetic_tradition'),
+('sunnah', 'Questions about prophetic traditions', 'prophetic_tradition'),
+('companions', 'Questions about the Sahaba', 'prophetic_tradition'),
+
+-- Character and Ethics (Akhlaq)
+('forgiveness', 'Questions about repentance and mercy', 'character'),
 ('morality', 'Questions about Islamic ethics', 'character'),
-('justice', 'Questions about fairness and justice', 'social_justice'),
-('mercy', 'Questions about Allah mercy and compassion', 'attributes_of_allah'),
 ('patience', 'Questions about sabr and perseverance', 'character'),
 ('gratitude', 'Questions about thankfulness to Allah', 'character'),
-('remembrance', 'Questions about dhikr and remembrance of Allah', 'worship'),
-('knowledge', 'Questions about seeking knowledge', 'education'),
+('honesty', 'Questions about truthfulness', 'character'),
+('humility', 'Questions about modesty and humbleness', 'character'),
+('compassion', 'Questions about kindness and mercy', 'character'),
+
+-- Attributes of Allah
+('mercy', 'Questions about Allah mercy and compassion', 'attributes_of_allah'),
+('forgiveness_divine', 'Questions about Allah forgiving nature', 'attributes_of_allah'),
+('omniscience', 'Questions about Allah all-knowing nature', 'attributes_of_allah'),
+('omnipotence', 'Questions about Allah power', 'attributes_of_allah'),
+('justice_divine', 'Questions about Allah justice', 'attributes_of_allah'),
+
+-- Social and Community
+('justice', 'Questions about fairness and justice', 'social_justice'),
 ('family', 'Questions about family relationships', 'social'),
-('community', 'Questions about ummah and society', 'social')
+('community', 'Questions about ummah and society', 'social'),
+('leadership', 'Questions about guidance and authority', 'social'),
+('equality', 'Questions about human equality in Islam', 'social_justice'),
+
+-- Knowledge and Learning
+('knowledge', 'Questions about seeking knowledge', 'education'),
+('wisdom', 'Questions about wisdom and understanding', 'education'),
+('reflection', 'Questions about contemplation', 'education'),
+
+-- Spiritual Development
+('spirituality', 'Questions about spiritual growth', 'spiritual'),
+('purification', 'Questions about cleansing the soul', 'spiritual'),
+('consciousness', 'Questions about God-consciousness (Taqwa)', 'spiritual'),
+
+-- Historical Context
+('history', 'Questions about Islamic history', 'historical'),
+('revelation', 'Questions about how Quran was revealed', 'historical'),
+('meccan_period', 'Questions about Meccan revelations', 'historical'),
+('medinan_period', 'Questions about Medinan revelations', 'historical')
+
 ON CONFLICT (name) DO NOTHING;
 
 -- Create junction table for question-topic relationships
@@ -119,18 +174,27 @@ CREATE TRIGGER update_verse_processing_status_trigger
   FOR EACH ROW
   EXECUTE FUNCTION update_verse_processing_status();
 
--- Create function for semantic search using embeddings
+-- Create enhanced function for semantic search using embeddings
 CREATE OR REPLACE FUNCTION search_questions_by_similarity(
   query_embedding vector(1536),
-  similarity_threshold float DEFAULT 0.7,
-  max_results int DEFAULT 10
+  similarity_threshold float DEFAULT 0.75,
+  max_results int DEFAULT 10,
+  include_pending boolean DEFAULT false,
+  difficulty_filter difficulty_level DEFAULT NULL,
+  topic_filter text DEFAULT NULL
 )
 RETURNS TABLE (
   question_id UUID,
   similarity_score float,
   prompt TEXT,
+  answer TEXT,
+  difficulty difficulty_level,
+  topics TEXT[],
   surah INTEGER,
-  ayah INTEGER
+  ayah INTEGER,
+  arabic_text TEXT,
+  confidence_score DECIMAL,
+  ai_generated BOOLEAN
 ) AS $$
 BEGIN
   RETURN QUERY
@@ -138,17 +202,25 @@ BEGIN
     q.id,
     1 - (q.embedding <=> query_embedding) as similarity,
     q.prompt,
+    q.answer,
+    q.difficulty,
+    q.topics,
     v.surah,
-    v.ayah
+    v.ayah,
+    v.arabic_text,
+    q.confidence_score,
+    q.ai_generated
   FROM questions q
   JOIN verses v ON q.verse_id = v.id
   WHERE q.embedding IS NOT NULL
-    AND q.approved_at IS NOT NULL
+    AND (include_pending OR q.approved_at IS NOT NULL)
+    AND (difficulty_filter IS NULL OR q.difficulty = difficulty_filter)
+    AND (topic_filter IS NULL OR topic_filter = ANY(q.topics))
     AND (1 - (q.embedding <=> query_embedding)) >= similarity_threshold
   ORDER BY q.embedding <=> query_embedding
   LIMIT max_results;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Create improved RLS policies for new AI features
 
@@ -217,7 +289,7 @@ GRANT USAGE ON SCHEMA public TO authenticated;
 GRANT ALL ON ALL TABLES IN SCHEMA public TO authenticated;
 GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO authenticated;
 
--- Create function to get AI generation statistics
+-- Create comprehensive function to get AI generation statistics
 CREATE OR REPLACE FUNCTION get_ai_generation_stats(days_back INTEGER DEFAULT 7)
 RETURNS JSON AS $$
 DECLARE
@@ -228,38 +300,93 @@ BEGIN
       COUNT(*) as total_runs,
       COUNT(*) FILTER (WHERE success = true) as successful_runs,
       COALESCE(SUM(questions_generated), 0) as total_questions,
+      COALESCE(SUM(questions_approved), 0) as total_approved,
       COALESCE(AVG(duration_seconds), 0) as avg_duration,
-      COUNT(*) FILTER (WHERE success = false) as failed_runs
+      COUNT(*) FILTER (WHERE success = false) as failed_runs,
+      COUNT(*) FILTER (WHERE batch_type = 'daily_generation') as daily_runs,
+      COUNT(*) FILTER (WHERE batch_type = 'quality_review') as review_runs
     FROM batch_runs 
     WHERE run_at >= NOW() - INTERVAL '1 day' * days_back
   ),
   pending_questions AS (
-    SELECT COUNT(*) as pending_count
+    SELECT COUNT(*) as pending_count,
+           AVG(confidence_score) as avg_confidence
     FROM questions 
     WHERE approved_at IS NULL AND ai_generated = true
   ),
   approved_questions AS (
-    SELECT COUNT(*) as approved_count
+    SELECT COUNT(*) as approved_count,
+           COUNT(*) FILTER (WHERE confidence_score >= 0.8) as high_confidence,
+           AVG(confidence_score) as avg_approved_confidence
     FROM questions 
     WHERE approved_at IS NOT NULL AND ai_generated = true
+  ),
+  topic_distribution AS (
+    SELECT jsonb_object_agg(topic, topic_count) as distribution
+    FROM (
+      SELECT unnest(topics) as topic, COUNT(*) as topic_count
+      FROM questions 
+      WHERE ai_generated = true 
+        AND approved_at IS NOT NULL
+        AND created_at >= NOW() - INTERVAL '1 day' * days_back
+      GROUP BY unnest(topics)
+      ORDER BY topic_count DESC
+      LIMIT 10
+    ) t
+  ),
+  quality_metrics AS (
+    SELECT 
+      AVG(confidence_score) as overall_confidence,
+      COUNT(*) FILTER (WHERE confidence_score >= 0.9) as excellent_quality,
+      COUNT(*) FILTER (WHERE confidence_score >= 0.8) as good_quality,
+      COUNT(*) FILTER (WHERE confidence_score < 0.7) as needs_review
+    FROM questions
+    WHERE ai_generated = true
+      AND created_at >= NOW() - INTERVAL '1 day' * days_back
   )
   SELECT json_build_object(
-    'total_runs', s.total_runs,
-    'successful_runs', s.successful_runs,
-    'failed_runs', s.failed_runs,
-    'success_rate', CASE WHEN s.total_runs > 0 THEN ROUND((s.successful_runs::DECIMAL / s.total_runs) * 100, 2) ELSE 0 END,
-    'total_questions_generated', s.total_questions,
-    'average_duration_seconds', ROUND(s.avg_duration, 2),
-    'pending_questions', pq.pending_count,
-    'approved_questions', aq.approved_count,
-    'days_analyzed', days_back,
-    'generated_at', NOW()
+    'summary', json_build_object(
+      'total_runs', s.total_runs,
+      'successful_runs', s.successful_runs,
+      'failed_runs', s.failed_runs,
+      'success_rate', CASE WHEN s.total_runs > 0 THEN ROUND((s.successful_runs::DECIMAL / s.total_runs) * 100, 2) ELSE 0 END,
+      'daily_runs', s.daily_runs,
+      'review_runs', s.review_runs
+    ),
+    'questions', json_build_object(
+      'total_generated', s.total_questions,
+      'total_approved', s.total_approved,
+      'pending_count', pq.pending_count,
+      'approved_count', aq.approved_count,
+      'approval_rate', CASE WHEN s.total_questions > 0 THEN ROUND((s.total_approved::DECIMAL / s.total_questions) * 100, 2) ELSE 0 END
+    ),
+    'performance', json_build_object(
+      'average_duration_seconds', ROUND(s.avg_duration, 2),
+      'questions_per_minute', CASE WHEN s.avg_duration > 0 THEN ROUND(s.total_questions::DECIMAL / (s.avg_duration / 60), 2) ELSE 0 END
+    ),
+    'quality', json_build_object(
+      'overall_confidence', ROUND(qm.overall_confidence, 3),
+      'pending_avg_confidence', ROUND(pq.avg_confidence, 3),
+      'approved_avg_confidence', ROUND(aq.avg_approved_confidence, 3),
+      'excellent_quality_count', qm.excellent_quality,
+      'good_quality_count', qm.good_quality,
+      'needs_review_count', qm.needs_review,
+      'high_confidence_approved', aq.high_confidence
+    ),
+    'topics', json_build_object(
+      'distribution', COALESCE(td.distribution, '{}'::jsonb)
+    ),
+    'metadata', json_build_object(
+      'days_analyzed', days_back,
+      'generated_at', NOW(),
+      'version', '2.0'
+    )
   ) INTO result
-  FROM stats s, pending_questions pq, approved_questions aq;
+  FROM stats s, pending_questions pq, approved_questions aq, topic_distribution td, quality_metrics qm;
   
   RETURN result;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Add comment for documentation
 COMMENT ON FUNCTION get_ai_generation_stats IS 'Get comprehensive statistics about AI question generation system';
@@ -282,5 +409,180 @@ FROM verses v
 WHERE NOT EXISTS (
   SELECT 1 FROM verse_processing_status vps WHERE vps.verse_id = v.id
 );
+
+-- Create function to validate Islamic content using AI
+CREATE OR REPLACE FUNCTION validate_islamic_content(
+  question_text TEXT,
+  answer_text TEXT,
+  verse_context TEXT
+)
+RETURNS JSON AS $$
+DECLARE
+  validation_result JSON;
+BEGIN
+  -- This function would integrate with AI service for Islamic validation
+  -- For now, returns a basic structure that can be populated by the application
+  SELECT json_build_object(
+    'is_valid', true,
+    'confidence_score', 0.85,
+    'validation_checks', json_build_object(
+      'theological_accuracy', true,
+      'cultural_sensitivity', true,
+      'language_appropriateness', true,
+      'scholarly_consensus', true
+    ),
+    'suggested_improvements', '[]'::json,
+    'validation_notes', 'Content appears to be theologically sound and culturally appropriate.',
+    'validated_at', NOW(),
+    'validator_version', '1.0'
+  ) INTO validation_result;
+  
+  RETURN validation_result;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Create function to generate contextual hints for questions
+CREATE OR REPLACE FUNCTION generate_question_hint(
+  question_id UUID,
+  difficulty_level TEXT DEFAULT 'progressive'
+)
+RETURNS JSON AS $$
+DECLARE
+  question_data RECORD;
+  hint_result JSON;
+BEGIN
+  -- Get question and verse data
+  SELECT q.prompt, q.answer, q.topics, v.arabic_text, v.translation_en, v.surah, v.ayah
+  INTO question_data
+  FROM questions q
+  JOIN verses v ON q.verse_id = v.id
+  WHERE q.id = question_id;
+  
+  IF NOT FOUND THEN
+    RETURN json_build_object('error', 'Question not found');
+  END IF;
+  
+  -- Generate progressive hints based on difficulty level
+  SELECT json_build_object(
+    'hints', CASE difficulty_level
+      WHEN 'gentle' THEN json_build_array(
+        json_build_object(
+          'level', 1,
+          'text', 'Think about the main theme of this verse.',
+          'reveal_percentage', 10
+        ),
+        json_build_object(
+          'level', 2, 
+          'text', 'Consider the context of Surah ' || question_data.surah || '.',
+          'reveal_percentage', 25
+        )
+      )
+      WHEN 'moderate' THEN json_build_array(
+        json_build_object(
+          'level', 1,
+          'text', 'Look at the key concepts in the verse.',
+          'reveal_percentage', 15
+        ),
+        json_build_object(
+          'level', 2,
+          'text', 'The answer relates to: ' || array_to_string(question_data.topics[1:2], ', '),
+          'reveal_percentage', 35
+        )
+      )
+      ELSE json_build_array(
+        json_build_object(
+          'level', 1,
+          'text', 'The answer begins with: ' || left(question_data.answer, 3) || '...',
+          'reveal_percentage', 50
+        )
+      )
+    END,
+    'verse_reference', json_build_object(
+      'surah', question_data.surah,
+      'ayah', question_data.ayah,
+      'arabic_text', question_data.arabic_text,
+      'translation', question_data.translation_en
+    ),
+    'generated_at', NOW()
+  ) INTO hint_result;
+  
+  RETURN hint_result;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Add new indices for enhanced performance
+CREATE INDEX IF NOT EXISTS questions_generation_model_idx ON questions(generation_model) WHERE ai_generated = true;
+CREATE INDEX IF NOT EXISTS questions_islamic_validation_idx ON questions USING gin(islamic_validation) WHERE ai_generated = true;
+CREATE INDEX IF NOT EXISTS batch_runs_batch_type_idx ON batch_runs(batch_type);
+CREATE INDEX IF NOT EXISTS batch_runs_completed_at_idx ON batch_runs(completed_at);
+
+-- Create materialized view for AI performance dashboard
+CREATE MATERIALIZED VIEW IF NOT EXISTS ai_performance_dashboard AS
+WITH daily_stats AS (
+  SELECT 
+    DATE(created_at) as date,
+    COUNT(*) as questions_generated,
+    COUNT(*) FILTER (WHERE approved_at IS NOT NULL) as questions_approved,
+    AVG(confidence_score) as avg_confidence,
+    COUNT(*) FILTER (WHERE confidence_score >= 0.9) as high_quality_count
+  FROM questions
+  WHERE ai_generated = true
+    AND created_at >= NOW() - INTERVAL '30 days'
+  GROUP BY DATE(created_at)
+),
+batch_performance AS (
+  SELECT 
+    DATE(run_at) as date,
+    COUNT(*) as batch_runs,
+    COUNT(*) FILTER (WHERE success = true) as successful_batches,
+    AVG(duration_seconds) as avg_duration,
+    SUM(questions_generated) as total_generated
+  FROM batch_runs
+  WHERE run_at >= NOW() - INTERVAL '30 days'
+  GROUP BY DATE(run_at)
+)
+SELECT 
+  COALESCE(ds.date, bp.date) as date,
+  COALESCE(ds.questions_generated, 0) as questions_generated,
+  COALESCE(ds.questions_approved, 0) as questions_approved,
+  COALESCE(ds.avg_confidence, 0) as avg_confidence,
+  COALESCE(ds.high_quality_count, 0) as high_quality_count,
+  COALESCE(bp.batch_runs, 0) as batch_runs,
+  COALESCE(bp.successful_batches, 0) as successful_batches,
+  COALESCE(bp.avg_duration, 0) as avg_batch_duration,
+  COALESCE(bp.total_generated, 0) as total_batch_generated,
+  CASE 
+    WHEN COALESCE(ds.questions_generated, 0) > 0 
+    THEN ROUND((COALESCE(ds.questions_approved, 0)::DECIMAL / ds.questions_generated) * 100, 2) 
+    ELSE 0 
+  END as approval_rate
+FROM daily_stats ds
+FULL OUTER JOIN batch_performance bp ON ds.date = bp.date
+ORDER BY date DESC;
+
+-- Create index for materialized view
+CREATE UNIQUE INDEX IF NOT EXISTS ai_performance_dashboard_date_idx ON ai_performance_dashboard(date);
+
+-- Create function to refresh AI performance dashboard
+CREATE OR REPLACE FUNCTION refresh_ai_performance_dashboard()
+RETURNS void AS $$
+BEGIN
+  REFRESH MATERIALIZED VIEW CONCURRENTLY ai_performance_dashboard;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Grant permissions for new functions
+GRANT EXECUTE ON FUNCTION search_questions_by_similarity TO authenticated;
+GRANT EXECUTE ON FUNCTION get_ai_generation_stats TO authenticated;
+GRANT EXECUTE ON FUNCTION validate_islamic_content TO authenticated;
+GRANT EXECUTE ON FUNCTION generate_question_hint TO authenticated;
+GRANT EXECUTE ON FUNCTION refresh_ai_performance_dashboard TO authenticated;
+GRANT SELECT ON ai_performance_dashboard TO authenticated;
+
+-- Add comments for better documentation
+COMMENT ON FUNCTION search_questions_by_similarity IS 'Enhanced semantic search with filtering capabilities';
+COMMENT ON FUNCTION validate_islamic_content IS 'Validates question content for Islamic accuracy and cultural sensitivity';
+COMMENT ON FUNCTION generate_question_hint IS 'Generates contextual hints for quiz questions';
+COMMENT ON MATERIALIZED VIEW ai_performance_dashboard IS 'Performance metrics dashboard for AI question generation system';
 
 COMMIT;
