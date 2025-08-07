@@ -13,7 +13,11 @@
       "Bash(chmod:*)",
       "Bash(./scripts/verify-setup.sh:*)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(find:*)",
+      "Bash(npx playwright:*)",
+      "Bash(grep:*)",
+      "Bash(sed:*)"
     ],
     "deny": []
   }

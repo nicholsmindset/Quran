@@ -1,0 +1,60 @@
+{
+  "project": "quran-verse-challenge-staging",
+  "buildCommand": "npm run build",
+  "devCommand": "npm run dev",
+  "installCommand": "npm install",
+  "framework": "nextjs",
+  "regions": ["iad1"],
+  "env": {
+    "NEXT_PUBLIC_APP_URL": "https://quran-verse-challenge-staging.vercel.app",
+    "VERCEL_ENV": "staging"
+  },
+  "build": {
+    "env": {
+      "NODE_ENV": "production"
+    }
+  },
+  "functions": {
+    "src/app/api/**/*.ts": {
+      "runtime": "nodejs20.x",
+      "maxDuration": 300
+    },
+    "src/app/api/ai/**/*.ts": {
+      "runtime": "nodejs20.x",
+      "maxDuration": 900
+    },
+    "src/app/api/cron/**/*.ts": {
+      "runtime": "nodejs20.x",
+      "maxDuration": 900
+    }
+  },
+  "crons": [
+    {
+      "path": "/api/cron/question-generation",
+      "schedule": "0 */6 * * *"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        },
+        {
+          "key": "X-Environment",
+          "value": "staging"
+        }
+      ]
+    }
+  ]
+}

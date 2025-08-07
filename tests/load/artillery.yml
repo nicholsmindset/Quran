@@ -1,0 +1,324 @@
+config:
+  target: 'http://localhost:3000'
+  phases:
+    # Warm-up phase
+    - duration: 30
+      arrivalRate: 2
+      name: "Warm-up"
+    
+    # Ramp-up phase
+    - duration: 60
+      arrivalRate: 5
+      rampTo: 20
+      name: "Ramp-up load"
+    
+    # Sustained load phase
+    - duration: 120
+      arrivalRate: 20
+      name: "Sustained load"
+    
+    # Peak load phase
+    - duration: 60
+      arrivalRate: 20
+      rampTo: 50
+      name: "Peak load"
+    
+    # Cool-down phase
+    - duration: 30
+      arrivalRate: 50
+      rampTo: 5
+      name: "Cool-down"
+
+  # Performance thresholds - QA requirement: P95 < 300ms
+  ensure:
+    p95: 300  # 95th percentile response time must be < 300ms
+    p99: 500  # 99th percentile response time must be < 500ms
+    maxErrorRate: 1  # Maximum 1% error rate
+
+  # Variables for test data
+  variables:
+    testEmails:
+      - "loadtest1@example.com"
+      - "loadtest2@example.com"
+      - "loadtest3@example.com"
+      - "loadtest4@example.com"
+      - "loadtest5@example.com"
+    
+    passwords:
+      - "LoadTest123!"
+      - "TestPassword456"
+      - "SecurePass789"
+
+  # Plugins for enhanced reporting
+  plugins:
+    metrics-by-endpoint:
+      useOnlyRequestNames: true
+    
+    # Memory usage monitoring
+    memory:
+      enabled: true
+      interval: 1000
+    
+    # Custom metrics for Islamic content
+    expect:
+      outputFormat: json
+      reportFailuresAsErrors: true
+
+  # HTTP configuration
+  http:
+    timeout: 10
+    pool: 50  # Connection pool size
+    
+  # Processor for custom logic
+  processor: "./tests/load/processor.js"
+
+scenarios:
+  # Authentication load test
+  - name: "Authentication Flow"
+    weight: 30
+    flow:
+      - post:
+          url: "/api/auth/login"
+          name: "Login API"
+          json:
+            email: "{{ $randomItem(testEmails) }}"
+            password: "{{ $randomItem(passwords) }}"
+          capture:
+            - json: "$.data.session.access_token"
+              as: "authToken"
+          expect:
+            - statusCode: 200
+            - hasProperty: "data.user.id"
+            - responseTime: 300  # Must respond within 300ms
+
+      - get:
+          url: "/dashboard"
+          name: "Dashboard Page"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+          expect:
+            - statusCode: 200
+            - responseTime: 500
+
+  # API Endpoints load test
+  - name: "Quiz API Endpoints"
+    weight: 40
+    flow:
+      # Login first to get auth token
+      - post:
+          url: "/api/auth/login"
+          json:
+            email: "{{ $randomItem(testEmails) }}"
+            password: "LoadTest123!"
+          capture:
+            - json: "$.data.session.access_token"
+              as: "authToken"
+
+      # Get approved questions
+      - get:
+          url: "/api/questions/approved"
+          name: "Get Approved Questions"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+          expect:
+            - statusCode: 200
+            - hasProperty: "data"
+            - responseTime: 200
+          capture:
+            - json: "$.data[0].id"
+              as: "questionId"
+
+      # Submit quiz attempt
+      - post:
+          url: "/api/attempts"
+          name: "Submit Quiz Attempt"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+          json:
+            questionId: "{{ questionId }}"
+            answer: "Test answer"
+            timeSpent: 5000
+          expect:
+            - statusCode: 200
+            - hasProperty: "data.id"
+            - responseTime: 300
+
+  # AI Question Generation load test
+  - name: "AI Question Generation"
+    weight: 15
+    flow:
+      # Admin login
+      - post:
+          url: "/api/auth/login"
+          json:
+            email: "admin@example.com"
+            password: "AdminPassword123"
+          capture:
+            - json: "$.data.session.access_token"
+              as: "adminToken"
+
+      # Generate questions (lower frequency, higher resource usage)
+      - post:
+          url: "/api/ai/generate-questions"
+          name: "AI Question Generation"
+          headers:
+            Authorization: "Bearer {{ adminToken }}"
+          json:
+            verseId: "verse-{{ $randomInt(1, 100) }}"
+            count: 2
+            difficulty: "{{ $randomItem(['easy', 'medium', 'hard']) }}"
+          expect:
+            - statusCode: 200
+            - hasProperty: "data.questions"
+            - responseTime: 2000  # AI operations can take longer
+
+  # Question Approval workflow
+  - name: "Moderation Workflow"
+    weight: 10
+    flow:
+      # Moderator login
+      - post:
+          url: "/api/auth/login"
+          json:
+            email: "moderator@example.com"
+            password: "ModeratorPass123"
+          capture:
+            - json: "$.data.session.access_token"
+              as: "modToken"
+
+      # Get pending questions
+      - get:
+          url: "/api/questions/pending"
+          name: "Get Pending Questions"
+          headers:
+            Authorization: "Bearer {{ modToken }}"
+          expect:
+            - statusCode: 200
+            - responseTime: 200
+          capture:
+            - json: "$.data[0].id"
+              as: "pendingQuestionId"
+
+      # Approve question
+      - post:
+          url: "/api/questions/{{ pendingQuestionId }}/approve"
+          name: "Approve Question"
+          headers:
+            Authorization: "Bearer {{ modToken }}"
+          expect:
+            - statusCode: 200
+            - responseTime: 300
+
+  # Static assets and pages
+  - name: "Static Content"
+    weight: 5
+    flow:
+      - get:
+          url: "/"
+          name: "Home Page"
+          expect:
+            - statusCode: 200
+            - responseTime: 1000
+
+      - get:
+          url: "/auth"
+          name: "Auth Page"
+          expect:
+            - statusCode: 200
+            - responseTime: 800
+
+      # Test static assets
+      - get:
+          url: "/_next/static/css/app.css"
+          name: "CSS Assets"
+          expect:
+            - statusCode: 200
+            - responseTime: 100
+
+      - get:
+          url: "/_next/static/js/app.js"
+          name: "JS Assets"
+          expect:
+            - statusCode: 200
+            - responseTime: 200
+
+# Error handling and custom checks
+after:
+  - log: "Load test completed. Checking Arabic text rendering performance..."
+
+# Custom test for Islamic content performance
+custom:
+  islamicContentLoad:
+    - name: "Arabic Text Rendering Load"
+      scenarios:
+        - flow:
+            - get:
+                url: "/api/questions/approved"
+                name: "Arabic Questions Load"
+                capture:
+                  - json: "$.data[*].arabic_text"
+                    as: "arabicTexts"
+                expect:
+                  - statusCode: 200
+                  - responseTime: 250
+                  # Custom check for Arabic content
+                  - contains: "[\u0600-\u06FF]"  # Arabic Unicode range
+
+    - name: "Embedding Performance"
+      scenarios:
+        - flow:
+            - post:
+                url: "/api/ai/generate-embeddings"
+                name: "Generate Embeddings"
+                json:
+                  texts:
+                    - "بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ"
+                    - "الْحَمْدُ لِلَّهِ رَبِّ الْعَالَمِينَ"
+                expect:
+                  - statusCode: 200
+                  - responseTime: 1500  # Embedding generation is slower
+
+# Real-world simulation patterns
+patterns:
+  # Peak hours simulation (morning and evening prayers)
+  peakHours:
+    phases:
+      - duration: 300  # 5 minutes
+        arrivalRate: 100
+        name: "Morning prayer peak"
+      
+      - duration: 180  # 3 minutes
+        arrivalRate: 80
+        name: "Sustain morning"
+      
+      - duration: 300  # 5 minutes
+        arrivalRate: 120
+        name: "Evening prayer peak"
+
+  # Study session pattern
+  studySession:
+    phases:
+      - duration: 600  # 10 minutes
+        arrivalRate: 30
+        rampTo: 60
+        name: "Study session ramp-up"
+      
+      - duration: 1800  # 30 minutes
+        arrivalRate: 60
+        name: "Sustained study"
+      
+      - duration: 300  # 5 minutes
+        arrivalRate: 60
+        rampTo: 10
+        name: "Study session end"
+
+# Reporting configuration
+reporting:
+  - type: json
+    output: "./tests/reports/load-test-results.json"
+  
+  - type: html
+    output: "./tests/reports/load-test-report.html"
+    
+  - type: csv
+    output: "./tests/reports/load-test-metrics.csv"

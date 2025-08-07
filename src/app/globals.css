@@ -1,26 +1,145 @@
 @import 'tailwindcss';
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Light theme - Islamic colors */
+  --background: #fefefe;
+  --foreground: #1a1a1a;
+  --card: #ffffff;
+  --card-foreground: #1a1a1a;
+  --popover: #ffffff;
+  --popover-foreground: #1a1a1a;
+  --primary: #059669; /* Emerald-600 - Islamic green */
+  --primary-foreground: #ffffff;
+  --secondary: #f0fdf4; /* Green-50 */
+  --secondary-foreground: #166534; /* Green-800 */
+  --muted: #f9fafb; /* Gray-50 */
+  --muted-foreground: #6b7280; /* Gray-500 */
+  --accent: #ecfdf5; /* Green-50 */
+  --accent-foreground: #065f46; /* Emerald-800 */
+  --destructive: #dc2626; /* Red-600 */
+  --destructive-foreground: #ffffff;
+  --border: #e5e7eb; /* Gray-200 */
+  --input: #e5e7eb; /* Gray-200 */
+  --ring: #059669; /* Emerald-600 */
+  --radius: 0.5rem;
+  
+  /* Islamic-specific colors */
+  --islamic-gold: #d4af37;
+  --islamic-gold-light: #f4e7b1;
+  --islamic-navy: #1e3a8a;
+  --islamic-teal: #0d9488;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-islamic-gold: var(--islamic-gold);
+  --color-islamic-gold-light: var(--islamic-gold-light);
+  --color-islamic-navy: var(--islamic-navy);
+  --color-islamic-teal: var(--islamic-teal);
+  
+  --font-sans: var(--font-inter);
+  --font-arabic: var(--font-markazi);
+  --border-radius: var(--radius);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #0f172a; /* Slate-900 */
+    --foreground: #f8fafc; /* Slate-50 */
+    --card: #1e293b; /* Slate-800 */
+    --card-foreground: #f8fafc;
+    --popover: #1e293b;
+    --popover-foreground: #f8fafc;
+    --primary: #10b981; /* Emerald-500 */
+    --primary-foreground: #064e3b; /* Emerald-900 */
+    --secondary: #1e293b; /* Slate-800 */
+    --secondary-foreground: #f8fafc;
+    --muted: #334155; /* Slate-700 */
+    --muted-foreground: #94a3b8; /* Slate-400 */
+    --accent: #1e293b; /* Slate-800 */
+    --accent-foreground: #f8fafc;
+    --destructive: #ef4444; /* Red-500 */
+    --destructive-foreground: #f8fafc;
+    --border: #334155; /* Slate-700 */
+    --input: #334155;
+    --ring: #10b981; /* Emerald-500 */
   }
 }
 
+/* Base styles */
+* {
+  border-color: hsl(var(--border));
+}
+
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-feature-settings: "rlig" 1, "calt" 1;
+}
+
+/* Arabic text styling */
+.arabic-text {
+  font-family: var(--font-markazi), 'Times New Roman', serif;
+  font-size: 1.25em;
+  line-height: 1.8;
+  direction: rtl;
+  text-align: right;
+}
+
+/* Islamic decorative elements */
+.islamic-pattern {
+  background-image: 
+    radial-gradient(circle at 1px 1px, rgba(5, 150, 105, 0.1) 1px, transparent 0);
+  background-size: 20px 20px;
+}
+
+.islamic-border {
+  border-image: linear-gradient(
+    45deg, 
+    transparent 25%, 
+    hsl(var(--islamic-gold)) 25%, 
+    hsl(var(--islamic-gold)) 50%, 
+    transparent 50%
+  ) 1;
+}
+
+/* Smooth transitions */
+.transition-islamic {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Focus styles for accessibility */
+.focus-ring {
+  @apply focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2;
+}
+
+/* RTL support for Arabic content */
+[dir="rtl"] {
+  text-align: right;
+}
+
+[dir="rtl"] .text-left {
+  text-align: right;
+}
+
+[dir="rtl"] .text-right {
+  text-align: left;
 }

@@ -24,6 +24,15 @@ export interface Question {
   answer: string;
   difficulty: 'easy' | 'medium' | 'hard';
   approvedAt?: Date;
+  rejectedAt?: Date;
+  createdAt: Date;
+  createdBy: string;
+  moderatedBy?: string;
+  moderationNotes?: string;
+  status: 'pending' | 'approved' | 'rejected' | 'flagged';
+  priority: 'low' | 'medium' | 'high';
+  categoryTags?: string[];
+  arabicAccuracy?: 'verified' | 'needs_review' | 'corrected';
 }
 
 export interface Attempt {
@@ -58,6 +67,55 @@ export interface PaginatedResponse<T> extends ApiResponse<T[]> {
   };
 }
 
+// Scholar Moderation Types
+export interface ModerationAction {
+  id: string;
+  questionId: string;
+  scholarId: string;
+  action: 'approve' | 'reject' | 'edit' | 'flag';
+  notes?: string;
+  changes?: Record<string, any>;
+  createdAt: Date;
+}
+
+export interface ModerationBatch {
+  id: string;
+  scholarId: string;
+  questionIds: string[];
+  status: 'pending' | 'in_progress' | 'completed';
+  deadline: Date;
+  createdAt: Date;
+  completedAt?: Date;
+}
+
+export interface ScholarStats {
+  id: string;
+  scholarId: string;
+  totalReviewed: number;
+  approved: number;
+  rejected: number;
+  edited: number;
+  avgProcessingTime: number;
+  currentSLA: number;
+  period: 'daily' | 'weekly' | 'monthly';
+}
+
+export interface ArabicValidation {
+  text: string;
+  isValid: boolean;
+  corrections?: string;
+  diacritics: 'present' | 'partial' | 'missing';
+  script: 'uthmani' | 'standard' | 'mixed';
+}
+
+export interface TafsirReference {
+  source: string;
+  scholar: string;
+  explanation: string;
+  relevantQuotes?: string[];
+  isAuthentic: boolean;
+}
+
 // Component Props Types
 export interface LayoutProps {
   children: React.ReactNode;
@@ -67,4 +125,19 @@ export interface LayoutProps {
 export interface QuizProps {
   questions: Question[];
   onComplete: (results: Attempt[]) => void;
+}
+
+export interface ModerationQueueProps {
+  questions: Question[];
+  onModerate: (questionId: string, action: ModerationAction) => void;
+  scholar: User;
+}
+
+export interface QuestionReviewProps {
+  question: Question;
+  verse: Verse;
+  onApprove: (notes?: string) => void;
+  onReject: (reason: string) => void;
+  onEdit: (changes: Partial<Question>, notes?: string) => void;
+  onFlag: (concern: string) => void;
 }

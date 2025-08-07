@@ -15,9 +15,24 @@
   },
   "functions": {
     "src/app/api/**/*.ts": {
-      "runtime": "nodejs20.x"
+      "runtime": "nodejs20.x",
+      "maxDuration": 300
+    },
+    "src/app/api/ai/**/*.ts": {
+      "runtime": "nodejs20.x",
+      "maxDuration": 900
+    },
+    "src/app/api/cron/**/*.ts": {
+      "runtime": "nodejs20.x",
+      "maxDuration": 900
     }
   },
+  "crons": [
+    {
+      "path": "/api/cron/question-generation",
+      "schedule": "0 */4 * * *"
+    }
+  ],
   "headers": [
     {
       "source": "/(.*)",
