@@ -2,18 +2,36 @@ import { createBrowserClient } from '@supabase/ssr'
 import { createClient } from '@supabase/supabase-js'
 
 // Browser client for client-side operations
-export const createBrowserSupabaseClient = () =>
-  createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
+export const createBrowserSupabaseClient = () => {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  
+  if (!url) {
+    throw new Error('NEXT_PUBLIC_SUPABASE_URL is not defined')
+  }
+  
+  if (!anonKey) {
+    throw new Error('NEXT_PUBLIC_SUPABASE_ANON_KEY is not defined')
+  }
+  
+  return createBrowserClient(url, anonKey)
+}
 
 // Server client for server-side operations with service role key
-export const createServerSupabaseClient = () =>
-  createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  )
+export const createServerSupabaseClient = () => {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  
+  if (!url) {
+    throw new Error('NEXT_PUBLIC_SUPABASE_URL is not defined')
+  }
+  
+  if (!serviceKey) {
+    throw new Error('SUPABASE_SERVICE_ROLE_KEY is not defined')
+  }
+  
+  return createClient(url, serviceKey)
+}
 
 // Default export for API routes (server-side)
 export { createServerSupabaseClient as createClient }
