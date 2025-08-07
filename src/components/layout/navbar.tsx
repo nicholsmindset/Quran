@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useAuth } from '@/providers/auth-provider';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -28,7 +27,9 @@ import { cn } from '@/lib/cn';
 
 export function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const { user, signOut } = useAuth();
+  // Mock user for testing without authentication
+  const user = { email: 'demo@example.com', role: 'learner' as const };
+  const signOut = () => console.log('Sign out clicked');
 
   const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: Home },
@@ -45,7 +46,7 @@ export function Navbar() {
     ],
   };
 
-  const userInitials = user?.email.substring(0, 2).toUpperCase() || 'U';
+  const userInitials = user?.email.substring(0, 2).toUpperCase() || 'DE';
 
   const handleSignOut = async () => {
     try {

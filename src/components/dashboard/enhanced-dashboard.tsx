@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useAuth } from '@/providers/auth-provider';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -62,42 +61,47 @@ interface DashboardData {
 }
 
 export function EnhancedDashboard({ className }: EnhancedDashboardProps) {
-  const { user } = useAuth();
+  // Mock user for testing without authentication
+  const user = { id: 'demo-user', role: 'learner', email: 'demo@example.com' };
   const { toast } = useToast();
   const [selectedView, setSelectedView] = useState<'overview' | 'groups' | 'achievements' | 'insights'>('overview');
   const [showCelebration, setShowCelebration] = useState(false);
 
   // Fetch comprehensive dashboard data
   const { data: dashboardData, isLoading, error } = useQuery({
-    queryKey: ['enhanced-dashboard', user?.id],
+    queryKey: ['enhanced-dashboard', 'demo-user'],
     queryFn: async (): Promise<DashboardData> => {
-      const [progressRes, quizRes, groupsRes, recommendationsRes] = await Promise.all([
-        fetch('/api/user/progress?include_breakdown=true&period=month'),
-        fetch('/api/quiz/daily/status'),
-        user?.role === 'teacher' ? fetch('/api/groups') : 
-        user?.role === 'learner' ? fetch('/api/groups/student') : 
-        Promise.resolve({ json: () => ({ groups: [] }) }),
-        fetch('/api/ai/recommendations')
-      ]);
-
-      const [progress, quiz, groups, recommendations] = await Promise.all([
-        progressRes.json(),
-        quizRes.json(),
-        groupsRes.json(),
-        recommendationsRes.json()
-      ]);
-
+      // Return mock data for testing without authentication
       return {
-        userProgress: progress.data,
-        dailyQuizStatus: quiz.data,
-        groups: groups.groups || [],
-        recommendations: recommendations.data || [],
-        achievements: progress.data?.achievements || [],
-        streakData: progress.data?.streaks || { current: 0, longest: 0 },
-        recentActivity: progress.data?.recentActivity || []
+        userProgress: {
+          totalQuestions: 25,
+          correctAnswers: 18,
+          averageScore: 72,
+          questionsThisMonth: 12,
+          accurracyTrend: '+5%'
+        },
+        dailyQuizStatus: {
+          available: true,
+          completed: false,
+          streak: 3
+        },
+        groups: [],
+        recommendations: [
+          { title: "Focus on Surahs", type: "study", priority: "high" },
+          { title: "Review Ayahs", type: "practice", priority: "medium" }
+        ],
+        achievements: [
+          { name: "First Steps", unlocked: true, progress: 100 },
+          { name: "Week Warrior", unlocked: true, progress: 100 },
+          { name: "Month Master", unlocked: false, progress: 60 }
+        ],
+        streakData: { current: 3, longest: 7 },
+        recentActivity: [
+          { type: "quiz", score: 85, date: new Date() },
+          { type: "study", duration: 15, date: new Date() }
+        ]
       };
     },
-    enabled: !!user?.id,
     refetchInterval: 30000 // Refresh every 30 seconds for real-time updates
   });
 
