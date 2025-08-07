@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { useAuth } from '@/providers/auth-provider';
 import { Navbar } from '@/components/layout/navbar';
 import { DailyQuizLanding } from '@/components/quiz/daily-quiz-landing';
 import { QuizInterface } from '@/components/quiz/quiz-interface';
@@ -65,7 +64,8 @@ async function completeQuiz(sessionId: string): Promise<QuizResult> {
 type QuizMode = 'landing' | 'taking' | 'results';
 
 export default function QuizPage() {
-  const { user } = useAuth();
+  // Mock user for testing without authentication
+  const user = { id: 'demo-user', role: 'learner', email: 'demo@example.com' };
   const [mode, setMode] = useState<QuizMode>('landing');
   const [currentSession, setCurrentSession] = useState<QuizSession | null>(null);
   const [quizResult, setQuizResult] = useState<QuizResult | null>(null);
@@ -74,7 +74,7 @@ export default function QuizPage() {
   const { data: quizStatus, isLoading, refetch } = useQuery({
     queryKey: ['quiz-status'],
     queryFn: fetchQuizStatus,
-    enabled: !!user,
+    enabled: true,
   });
 
   // Start quiz mutation

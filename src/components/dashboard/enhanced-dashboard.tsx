@@ -151,8 +151,31 @@ export function EnhancedDashboard({ className }: EnhancedDashboardProps) {
         ],
         streakData: { current: 3, longest: 7 },
         recentActivity: [
-          { type: "quiz", score: 85, date: new Date() },
-          { type: "study", duration: 15, date: new Date() }
+          { 
+            id: '1',
+            type: "quiz_completed", 
+            title: "Daily Quiz Completed",
+            description: "Scored 85% on today's quiz",
+            score: 85, 
+            timestamp: new Date(),
+            metadata: { surah: 'Al-Fatiha', difficulty: 'medium' }
+          },
+          { 
+            id: '2',
+            type: "quiz_completed",
+            title: "Practice Session", 
+            description: "15 minute study session completed",
+            timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000),
+            metadata: { duration: 15 }
+          },
+          { 
+            id: '3',
+            type: "streak_milestone",
+            title: "3 Day Streak!",
+            description: "Keep up the consistent learning",
+            timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
+            metadata: { streakDays: 3 }
+          }
         ]
       };
     },
