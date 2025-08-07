@@ -1,10 +1,12 @@
 [build]
   publish = ".next"
-  command = "npm install --legacy-peer-deps && npm run build"
+  command = "npm ci --legacy-peer-deps && npm run build"
 
 [build.environment]
-  NODE_VERSION = "18"
+  NODE_VERSION = "20"
   NPM_VERSION = "10"
+  SECRETS_SCAN_OMIT_KEYS = "NEXT_PUBLIC_SUPABASE_URL,NEXT_PUBLIC_SUPABASE_ANON_KEY"
+  SECRETS_SCAN_OMIT_PATHS = ".next/**,.netlify/**,node_modules/**"
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
@@ -21,6 +23,7 @@
 # NEXT_PUBLIC_SUPABASE_URL = your_supabase_project_url
 # NEXT_PUBLIC_SUPABASE_ANON_KEY = your_supabase_anon_key
 # SUPABASE_SERVICE_ROLE_KEY = your_supabase_service_role_key (for server-side operations)
+# OPENAI_API_KEY = your_openai_api_key (required for AI features)
 
 # Optional email service configuration:
 # RESEND_API_KEY = your_resend_api_key (if using Resend for emails)

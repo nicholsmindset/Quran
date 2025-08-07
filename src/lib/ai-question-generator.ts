@@ -5,10 +5,12 @@ import type { Database } from './supabase';
 type Verse = Database['public']['Tables']['verses']['Row'];
 type QuestionInsert = Database['public']['Tables']['questions']['Insert'];
 
-// Configure OpenAI client
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+// Configure OpenAI client - handle missing API key gracefully during build
+const openai = process.env.OPENAI_API_KEY 
+  ? new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    })
+  : null;
 
 export interface GeneratedQuestion {
   prompt: string;
@@ -85,6 +87,10 @@ export class AIQuestionGenerator {
    * Generate Multiple Choice Questions using GPT-4o
    */
   private async generateMCQQuestions(verse: Verse, count: number): Promise<GeneratedQuestion[]> {
+    if (!openai) {
+      throw new Error('OpenAI API key not configured');
+    }
+    
     const prompt = this.createMCQPrompt(verse);
     
     try {
@@ -132,6 +138,10 @@ Response format must be valid JSON array.`
    * Generate Fill-in-the-blank Questions
    */
   private async generateFillBlankQuestions(verse: Verse, count: number): Promise<GeneratedQuestion[]> {
+    if (!openai) {
+      throw new Error('OpenAI API key not configured');
+    }
+    
     const prompt = this.createFillBlankPrompt(verse);
     
     try {
@@ -287,6 +297,11 @@ Return JSON format:
    * Generate embeddings for questions
    */
   async generateEmbeddings(questions: GeneratedQuestion[]): Promise<number[][]> {
+    if (!openai) {
+      console.warn('OpenAI API key not configured - returning zero embeddings');
+      return questions.map(() => new Array(1536).fill(0));
+    }
+    
     try {
       const texts = questions.map(q => `${q.prompt} ${q.choices.join(' ')} ${q.topics.join(' ')}`);
       

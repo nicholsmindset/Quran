@@ -14,10 +14,12 @@ import type {
   TafsirReference 
 } from '@/types';
 
-// Configure OpenAI client
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+// Configure OpenAI client - handle missing API key gracefully during build
+const openai = process.env.OPENAI_API_KEY 
+  ? new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    })
+  : null;
 
 /**
  * AI Enhancement Service for Sprint 2
@@ -363,6 +365,10 @@ export class AIEnhancementService {
   // Private helper methods
 
   private async generateContextWithAI(question: Question, verse: Verse): Promise<any> {
+    if (!openai) {
+      throw new Error('OpenAI API key not configured');
+    }
+    
     const prompt = `Generate educational context for this Quranic question:
 
 Verse: Surah ${verse.surah}:${verse.ayah}
@@ -396,6 +402,10 @@ Return JSON format with fields: historicalBackground, thematicConnections, diffi
   }
 
   private async generateHintsWithAI(question: Question): Promise<any[]> {
+    if (!openai) {
+      throw new Error('OpenAI API key not configured');
+    }
+    
     const prompt = `Create 3 progressive hints for this question:
 Question: ${question.prompt}
 Correct Answer: ${question.answer}
@@ -430,6 +440,10 @@ Return JSON array with fields: content, type, isRevealing`;
     userAnswer: string,
     isCorrect: boolean
   ): Promise<any> {
+    if (!openai) {
+      throw new Error('OpenAI API key not configured');
+    }
+    
     const prompt = `Explain why this answer is ${isCorrect ? 'correct' : 'incorrect'}:
 
 Question: ${question.prompt}
@@ -456,6 +470,10 @@ Provide educational explanation and related concepts for learning.`;
   }
 
   private async generateRecommendationsWithAI(pattern: UserPerformancePattern): Promise<any[]> {
+    if (!openai) {
+      throw new Error('OpenAI API key not configured');
+    }
+    
     const prompt = `Based on this learning pattern, generate personalized study recommendations:
 
 Strengths: ${Object.keys(pattern.topicStrengths).join(', ')}
