@@ -32,7 +32,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         
         if (session?.user) {
           const { data: profile } = await supabase
-            .from('profiles')
+            .from('users')
             .select('*')
             .eq('id', session.user.id)
             .single();
@@ -60,7 +60,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' && session?.user) {
         const { data: profile } = await supabase
-          .from('profiles')
+          .from('users')
           .select('*')
           .eq('id', session.user.id)
           .single();
@@ -103,8 +103,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
     
     if (data.user) {
-      // Create profile
-      const { error: profileError } = await supabase.from('profiles').insert({
+      // Create user profile
+      const { error: profileError } = await supabase.from('users').insert({
         id: data.user.id,
         email,
         role,
