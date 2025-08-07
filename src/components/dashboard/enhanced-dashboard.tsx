@@ -231,7 +231,7 @@ export function EnhancedDashboard({ className }: EnhancedDashboardProps) {
         <IslamicGreeting
           user={user}
           streakData={dashboardData?.streakData}
-          completedToday={dashboardData?.dailyQuizStatus?.hasCompletedToday}
+          completedToday={dashboardData?.dailyQuizStatus?.hasCompletedToday ?? false}
         />
 
         <div className='flex items-center space-x-2'>
