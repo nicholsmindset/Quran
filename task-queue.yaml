@@ -1,0 +1,350 @@
+# Task Queue Framework - Redis-based Agent Coordination
+# Generated: 2025-08-07 | Product Manager Agent
+# Format: YAML messages for Redis tasks:* queues
+
+# Queue Structure
+queues:
+  new: 'tasks:new' # Pending task assignments
+  claimed: 'tasks:claimed' # Agent ownership tracking
+  completed: 'tasks:completed' # Finished items
+  blocked: 'tasks:blocked' # Dependency waiting
+
+# Task Message Format
+task_message_schema:
+  id: 'string' # Unique task identifier (T001, T002, etc)
+  title: 'string' # Human readable task name
+  assignee: 'string' # Target agent (Backend, Frontend, etc)
+  status: 'string' # pending|claimed|in_progress|blocked|completed
+  priority: 'string' # P0|P1|P2|P3
+  estimate: 'string' # Time estimate (2h, 1d, etc)
+  dependencies: ['array'] # Task IDs that must complete first
+  story_id: 'string' # Parent user story reference
+  created_at: 'timestamp'
+  claimed_at: 'timestamp'
+  completed_at: 'timestamp'
+
+# Initial Sprint 1 Task Queue
+initial_tasks:
+  - id: 'T001'
+    title: 'Setup Supabase Auth'
+    assignee: 'Backend'
+    status: 'pending'
+    priority: 'P0'
+    estimate: '4h'
+    dependencies: []
+    story_id: 'US011'
+    description: 'Configure Supabase authentication with email/password'
+    acceptance_criteria:
+      - 'Supabase project created and configured'
+      - 'Auth API endpoints functional'
+      - 'Environment variables set'
+
+  - id: 'T002'
+    title: 'Create users table with roles'
+    assignee: 'Backend'
+    status: 'pending'
+    priority: 'P0'
+    estimate: '3h'
+    dependencies: ['T001']
+    story_id: 'US011'
+    description: 'Database table for user accounts with role support'
+    acceptance_criteria:
+      - 'users table created with proper schema'
+      - 'Role enum includes learner/teacher/scholar'
+      - 'Created_at timestamp included'
+
+  - id: 'T003'
+    title: 'Implement registration API'
+    assignee: 'Backend'
+    status: 'pending'
+    priority: 'P0'
+    estimate: '6h'
+    dependencies: ['T002']
+    story_id: 'US011'
+    description: 'API endpoint for new user registration'
+    acceptance_criteria:
+      - 'POST /api/auth/register endpoint'
+      - 'Input validation and sanitization'
+      - 'Password hashing implemented'
+
+  - id: 'T004'
+    title: 'Implement login/logout flow'
+    assignee: 'Backend'
+    status: 'pending'
+    priority: 'P0'
+    estimate: '4h'
+    dependencies: ['T003']
+    story_id: 'US011'
+    description: 'Authentication endpoints for login/logout'
+    acceptance_criteria:
+      - 'POST /api/auth/login endpoint'
+      - 'POST /api/auth/logout endpoint'
+      - 'JWT token management'
+
+  - id: 'T005'
+    title: 'Setup RLS policies for users'
+    assignee: 'Backend'
+    status: 'pending'
+    priority: 'P0'
+    estimate: '3h'
+    dependencies: ['T004']
+    story_id: 'US011'
+    description: 'Row Level Security for user data protection'
+    acceptance_criteria:
+      - 'Users can only access own data'
+      - 'Admin roles have elevated access'
+      - 'Policies tested and functional'
+
+  - id: 'T006'
+    title: 'Design verses table schema'
+    assignee: 'Backend'
+    status: 'pending'
+    priority: 'P0'
+    estimate: '2h'
+    dependencies: []
+    story_id: 'US008'
+    description: "Database schema for Qur'anic verses"
+    acceptance_criteria:
+      - 'verses table with surah/ayah indexing'
+      - 'Arabic text and translation columns'
+      - 'Proper UTF-8 collation set'
+
+  - id: 'T007'
+    title: "Source authentic Qur'anic text data"
+    assignee: 'Backend'
+    status: 'pending'
+    priority: 'P0'
+    estimate: '4h'
+    dependencies: ['T006']
+    story_id: 'US008'
+    description: "Obtain reliable Qur'an text with translations"
+    acceptance_criteria:
+      - '6,236 verses in Uthmani script'
+      - 'English translations included'
+      - 'Data source documented and verified'
+
+  - id: 'T008'
+    title: 'Create verse seed script'
+    assignee: 'Backend'
+    status: 'pending'
+    priority: 'P0'
+    estimate: '6h'
+    dependencies: ['T007']
+    story_id: 'US008'
+    description: 'Script to populate verses table'
+    acceptance_criteria:
+      - 'Automated seeding script'
+      - 'Data validation included'
+      - 'Idempotent execution'
+
+  - id: 'T009'
+    title: 'Validate Arabic text encoding'
+    assignee: 'Backend'
+    status: 'pending'
+    priority: 'P0'
+    estimate: '3h'
+    dependencies: ['T008']
+    story_id: 'US008'
+    description: 'Ensure proper Arabic character handling'
+    acceptance_criteria:
+      - 'UTF-8 encoding verified'
+      - 'Arabic characters display correctly'
+      - 'No character corruption in storage'
+
+  - id: 'T010'
+    title: 'Create database indexes'
+    assignee: 'Backend'
+    status: 'pending'
+    priority: 'P0'
+    estimate: '1h'
+    dependencies: ['T009']
+    story_id: 'US008'
+    description: 'Optimize database performance'
+    acceptance_criteria:
+      - 'Index on surah/ayah columns'
+      - 'Text search optimization'
+      - 'Query performance tested'
+
+  - id: 'T011'
+    title: 'Design questions table schema'
+    assignee: 'Backend'
+    status: 'pending'
+    priority: 'P0'
+    estimate: '3h'
+    dependencies: []
+    story_id: 'US005'
+    description: 'Database schema for quiz questions'
+    acceptance_criteria:
+      - 'questions table with verse_id foreign key'
+      - 'approved_at timestamp column'
+      - 'Question types and choices support'
+
+  - id: 'T012'
+    title: 'Design attempts table schema'
+    assignee: 'Backend'
+    status: 'pending'
+    priority: 'P0'
+    estimate: '2h'
+    dependencies: ['T011']
+    story_id: 'US005'
+    description: 'Track user quiz attempts'
+    acceptance_criteria:
+      - 'attempts table with user/question relationship'
+      - 'Timestamp and correctness tracking'
+      - 'Foreign key constraints'
+
+  - id: 'T013'
+    title: 'Create approval workflow API endpoints'
+    assignee: 'Backend'
+    status: 'pending'
+    priority: 'P0'
+    estimate: '8h'
+    dependencies: ['T012']
+    story_id: 'US005'
+    description: 'API for scholar question approval'
+    acceptance_criteria:
+      - 'GET /api/questions/pending endpoint'
+      - 'POST /api/questions/{id}/approve endpoint'
+      - 'POST /api/questions/{id}/reject endpoint'
+
+  - id: 'T014'
+    title: 'Setup RLS for questions/attempts'
+    assignee: 'Backend'
+    status: 'pending'
+    priority: 'P0'
+    estimate: '4h'
+    dependencies: ['T013']
+    story_id: 'US005'
+    description: 'Row Level Security for quiz data'
+    acceptance_criteria:
+      - 'Users see only approved questions'
+      - 'Scholars access pending questions'
+      - 'Users access own attempts only'
+
+  - id: 'T015'
+    title: 'Create audit logging system'
+    assignee: 'Backend'
+    status: 'pending'
+    priority: 'P0'
+    estimate: '3h'
+    dependencies: ['T014']
+    story_id: 'US005'
+    description: 'Track all approval actions'
+    acceptance_criteria:
+      - 'Log all approve/reject actions'
+      - 'Include scholar ID and timestamp'
+      - 'Audit trail queryable'
+
+  # Supporting DevOps Tasks
+  - id: 'T016'
+    title: 'Initialize Next.js project structure'
+    assignee: 'DevOps'
+    status: 'pending'
+    priority: 'P0'
+    estimate: '2h'
+    dependencies: []
+    story_id: 'SETUP'
+    description: 'Create Next.js 18 project with TypeScript'
+    acceptance_criteria:
+      - 'Next.js 18 initialized'
+      - 'TypeScript configuration'
+      - 'Basic folder structure'
+
+  - id: 'T017'
+    title: 'Setup TypeScript configuration'
+    assignee: 'DevOps'
+    status: 'pending'
+    priority: 'P0'
+    estimate: '1h'
+    dependencies: ['T016']
+    story_id: 'SETUP'
+    description: 'Configure TypeScript for the project'
+    acceptance_criteria:
+      - 'tsconfig.json configured'
+      - 'Strict type checking enabled'
+      - 'Path aliases set up'
+
+  - id: 'T018'
+    title: 'Configure ESLint and Prettier'
+    assignee: 'DevOps'
+    status: 'pending'
+    priority: 'P0'
+    estimate: '2h'
+    dependencies: ['T017']
+    story_id: 'SETUP'
+    description: 'Code quality tools setup'
+    acceptance_criteria:
+      - 'ESLint with Airbnb rules'
+      - 'Prettier formatting'
+      - 'Pre-commit hooks configured'
+
+  - id: 'T019'
+    title: 'Setup Vercel deployment pipeline'
+    assignee: 'DevOps'
+    status: 'pending'
+    priority: 'P0'
+    estimate: '3h'
+    dependencies: ['T018']
+    story_id: 'SETUP'
+    description: 'Configure automatic deployment'
+    acceptance_criteria:
+      - 'Vercel project connected'
+      - 'Auto-deploy from main branch'
+      - 'Preview deployments for PRs'
+
+  - id: 'T020'
+    title: 'Configure environment variables'
+    assignee: 'DevOps'
+    status: 'pending'
+    priority: 'P0'
+    estimate: '1h'
+    dependencies: ['T019']
+    story_id: 'SETUP'
+    description: 'Setup env vars for all environments'
+    acceptance_criteria:
+      - 'Production env vars in Vercel'
+      - 'Development .env.local'
+      - 'Staging environment configured'
+
+# Agent Communication Protocol
+agent_protocol:
+  task_claiming:
+    action: 'Move task from tasks:new to tasks:claimed'
+    fields_to_update:
+      - 'status: claimed'
+      - 'claimed_at: timestamp'
+
+  task_progress:
+    action: 'Update status in tasks:claimed'
+    valid_status: ['claimed', 'in_progress', 'blocked']
+
+  task_completion:
+    action: 'Move task to tasks:completed'
+    fields_to_update:
+      - 'status: completed'
+      - 'completed_at: timestamp'
+    requirements:
+      - 'All acceptance criteria met'
+      - 'Code committed to branch'
+      - 'PR created and linked'
+
+  blocking_dependency:
+    action: 'Move task to tasks:blocked'
+    fields_to_update:
+      - 'status: blocked'
+      - 'blocked_reason: string'
+    escalation: 'Tag PM agent for resolution'
+
+# Monitoring and Metrics
+monitoring:
+  queue_metrics:
+    - 'Tasks pending by agent'
+    - 'Average completion time'
+    - 'Blocked task duration'
+    - 'Sprint burn-down rate'
+
+  agent_performance:
+    - 'Tasks completed per day'
+    - 'Estimation accuracy'
+    - 'Code review pass rate'
+    - 'Dependency blocking frequency'

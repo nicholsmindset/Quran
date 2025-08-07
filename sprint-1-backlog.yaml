@@ -1,0 +1,247 @@
+# Sprint 1 Backlog - Foundation & Authentication
+# Duration: 2 weeks | Goal: Core database schema, user auth, and verse data
+# Generated: 2025-08-07 | Product Manager Agent
+
+sprint:
+  number: 1
+  title: 'Foundation & Authentication'
+  duration: '2 weeks'
+  start_date: '2025-08-07'
+  end_date: '2025-08-21'
+  goal: 'Establish core database schema, user authentication system, and complete verse database'
+  estimated_points: 34
+
+# Task Queue Format for Redis tasks:*
+task_queue_ready: true
+
+committed_stories:
+  - id: 'US011'
+    title: 'User Registration/Login'
+    description: 'As any user, I want to create an account and login securely'
+    points: 13
+    assignee: 'Backend'
+    priority: 'P0'
+    acceptance_criteria:
+      - 'Email/password authentication functional'
+      - 'Role assignment (learner/teacher/scholar) working'
+      - 'GDPR compliant data handling implemented'
+      - 'Supabase Auth integration complete'
+      - 'RLS policies active for user data'
+    tasks:
+      - id: 'T001'
+        title: 'Setup Supabase Auth'
+        assignee: 'Backend'
+        estimate: '4h'
+        status: 'pending'
+      - id: 'T002'
+        title: 'Create users table with roles'
+        assignee: 'Backend'
+        estimate: '3h'
+        status: 'pending'
+      - id: 'T003'
+        title: 'Implement registration API'
+        assignee: 'Backend'
+        estimate: '6h'
+        status: 'pending'
+      - id: 'T004'
+        title: 'Implement login/logout flow'
+        assignee: 'Backend'
+        estimate: '4h'
+        status: 'pending'
+      - id: 'T005'
+        title: 'Setup RLS policies for users'
+        assignee: 'Backend'
+        estimate: '3h'
+        status: 'pending'
+
+  - id: 'US008'
+    title: 'Verse Database Setup'
+    description: "As the system, I need complete Qur'anic text with translations"
+    points: 8
+    assignee: 'Backend'
+    priority: 'P0'
+    acceptance_criteria:
+      - 'All 6,236 verses stored in Arabic (Uthmani script)'
+      - 'English translations included for each verse'
+      - 'Proper surah/ayah indexing implemented'
+      - 'UTF-8 encoding preserves Arabic characters'
+      - 'Database performance optimized for queries'
+    tasks:
+      - id: 'T006'
+        title: 'Design verses table schema'
+        assignee: 'Backend'
+        estimate: '2h'
+        status: 'pending'
+      - id: 'T007'
+        title: "Source authentic Qur'anic text data"
+        assignee: 'Backend'
+        estimate: '4h'
+        status: 'pending'
+      - id: 'T008'
+        title: 'Create verse seed script'
+        assignee: 'Backend'
+        estimate: '6h'
+        status: 'pending'
+      - id: 'T009'
+        title: 'Validate Arabic text encoding'
+        assignee: 'Backend'
+        estimate: '3h'
+        status: 'pending'
+      - id: 'T010'
+        title: 'Create database indexes'
+        assignee: 'Backend'
+        estimate: '1h'
+        status: 'pending'
+
+  - id: 'US005'
+    title: 'Question Approval Workflow'
+    description: 'As the system, I need to enforce scholar approval before serving questions'
+    points: 13
+    assignee: 'Backend'
+    priority: 'P0'
+    acceptance_criteria:
+      - 'questions table includes approved_at timestamp'
+      - 'Only approved questions served to users'
+      - 'Automatic scholar queue notification system'
+      - 'Complete audit trail of all approvals'
+      - 'RLS policies prevent unauthorized access'
+    tasks:
+      - id: 'T011'
+        title: 'Design questions table schema'
+        assignee: 'Backend'
+        estimate: '3h'
+        status: 'pending'
+      - id: 'T012'
+        title: 'Design attempts table schema'
+        assignee: 'Backend'
+        estimate: '2h'
+        status: 'pending'
+      - id: 'T013'
+        title: 'Create approval workflow API endpoints'
+        assignee: 'Backend'
+        estimate: '8h'
+        status: 'pending'
+      - id: 'T014'
+        title: 'Setup RLS for questions/attempts'
+        assignee: 'Backend'
+        estimate: '4h'
+        status: 'pending'
+      - id: 'T015'
+        title: 'Create audit logging system'
+        assignee: 'Backend'
+        estimate: '3h'
+        status: 'pending'
+
+# Additional Sprint Tasks (DevOps Support)
+supporting_tasks:
+  - id: 'T016'
+    title: 'Initialize Next.js project structure'
+    assignee: 'DevOps'
+    estimate: '2h'
+    priority: 'P0'
+    status: 'pending'
+  - id: 'T017'
+    title: 'Setup TypeScript configuration'
+    assignee: 'DevOps'
+    estimate: '1h'
+    priority: 'P0'
+    status: 'pending'
+  - id: 'T018'
+    title: 'Configure ESLint and Prettier'
+    assignee: 'DevOps'
+    estimate: '2h'
+    priority: 'P0'
+    status: 'pending'
+  - id: 'T019'
+    title: 'Setup Vercel deployment pipeline'
+    assignee: 'DevOps'
+    estimate: '3h'
+    priority: 'P0'
+    status: 'pending'
+  - id: 'T020'
+    title: 'Configure environment variables'
+    assignee: 'DevOps'
+    estimate: '1h'
+    priority: 'P0'
+    status: 'pending'
+
+# Definition of Done
+definition_of_done:
+  code_quality:
+    - 'TypeScript types defined for all entities'
+    - 'ESLint rules pass with no warnings'
+    - 'Code coverage ≥ 80% for new functions'
+  security:
+    - 'RLS policies tested and functional'
+    - 'No hardcoded secrets in codebase'
+    - 'API endpoints require proper authentication'
+  functionality:
+    - 'All acceptance criteria met and verified'
+    - 'Integration tests pass for auth flow'
+    - 'Database seeding completes successfully'
+  documentation:
+    - 'API endpoints documented in README'
+    - 'Database schema documented'
+    - 'Setup instructions updated'
+
+# Sprint Ceremonies
+ceremonies:
+  daily_standup:
+    time: '09:00 UTC'
+    duration: '15 min'
+    format: 'Async updates in task comments'
+
+  sprint_review:
+    date: '2025-08-21'
+    duration: '1 hour'
+    demo_items:
+      - 'User registration/login flow'
+      - 'Complete verse database'
+      - 'Question approval system'
+
+  sprint_retrospective:
+    date: '2025-08-21'
+    duration: '45 min'
+    focus: 'Agent coordination and parallel work'
+
+# Risk Management
+risks:
+  - risk: 'Arabic text encoding issues'
+    impact: 'High'
+    probability: 'Low'
+    mitigation: 'Early UTF-8 validation and testing'
+
+  - risk: 'Supabase RLS complexity'
+    impact: 'Medium'
+    probability: 'Medium'
+    mitigation: 'Start with simple policies, iterate'
+
+  - risk: 'Agent coordination overhead'
+    impact: 'Medium'
+    probability: 'Medium'
+    mitigation: 'Clear task dependencies and communication'
+
+# Success Metrics
+success_metrics:
+  - metric: 'User can register and login'
+    target: '100%'
+    measurement: 'Manual testing'
+
+  - metric: 'All 6,236 verses in database'
+    target: '100%'
+    measurement: 'SELECT COUNT(*) FROM verses'
+
+  - metric: 'Question approval workflow'
+    target: 'Functional'
+    measurement: 'API endpoint tests'
+
+  - metric: 'Sprint velocity'
+    target: '34 points'
+    measurement: 'Story point completion'
+
+# Next Sprint Preview
+next_sprint_prep:
+  - 'AI question generation pipeline design'
+  - 'Daily quiz scheduling system'
+  - 'Basic frontend component library'
+  - 'Scholar moderation interface mockups'
