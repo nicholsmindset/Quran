@@ -23,7 +23,7 @@ async function startDailyQuiz(): Promise<QuizSession> {
   const response = await fetch('/api/quiz/session/start', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ timezone: Intl.DateTimeFormat().resolvedOptions().timeZone })
+    body: JSON.stringify({ timezone: Intl.DateTimeFormat().resolvedOptions().timeZone }),
   });
   if (!response.ok) {
     throw new Error('Failed to start quiz session');
@@ -38,13 +38,13 @@ async function startDailyQuiz(): Promise<QuizSession> {
     status: 'in_progress',
     startedAt: new Date(),
     lastActivityAt: new Date(),
-    timezone: data.data?.session?.timezone || 'UTC'
+    timezone: data.data?.session?.timezone || 'UTC',
   };
 }
 
 async function completeQuiz(sessionId: string): Promise<QuizResult> {
   const response = await fetch(`/api/quiz/session/${sessionId}/complete`, {
-    method: 'POST'
+    method: 'POST',
   });
   if (!response.ok) {
     throw new Error('Failed to complete quiz');
@@ -57,21 +57,25 @@ async function completeQuiz(sessionId: string): Promise<QuizResult> {
     correctAnswers: data.data?.results?.correctAnswers || 4,
     timeSpent: data.data?.results?.timeSpent || 300000,
     answers: data.data?.results?.answers || [],
-    streakUpdated: data.data?.results?.streakUpdated || false
+    streakUpdated: data.data?.results?.streakUpdated || false,
   };
 }
 
 type QuizMode = 'landing' | 'taking' | 'results';
 
 export default function QuizPage() {
-  // Mock user for testing without authentication
-  const user = { id: 'demo-user', role: 'learner', email: 'demo@example.com' };
+  // Mock user for testing without authentication (currently unused but required for future auth integration)
+  const _user = { id: 'demo-user', role: 'learner', email: 'demo@example.com' };
   const [mode, setMode] = useState<QuizMode>('landing');
   const [currentSession, setCurrentSession] = useState<QuizSession | null>(null);
   const [quizResult, setQuizResult] = useState<QuizResult | null>(null);
 
   // Fetch quiz status
-  const { data: quizStatus, isLoading, refetch } = useQuery({
+  const {
+    data: quizStatus,
+    isLoading,
+    refetch,
+  } = useQuery({
     queryKey: ['quiz-status'],
     queryFn: fetchQuizStatus,
     enabled: true,
@@ -80,7 +84,7 @@ export default function QuizPage() {
   // Start quiz mutation
   const startQuizMutation = useMutation({
     mutationFn: startDailyQuiz,
-    onSuccess: (session) => {
+    onSuccess: session => {
       setCurrentSession(session);
       setMode('taking');
     },
@@ -89,7 +93,7 @@ export default function QuizPage() {
   // Complete quiz mutation
   const completeQuizMutation = useMutation({
     mutationFn: completeQuiz,
-    onSuccess: (result) => {
+    onSuccess: result => {
       setQuizResult(result);
       setMode('results');
       refetch(); // Refresh quiz status
@@ -125,13 +129,13 @@ export default function QuizPage() {
   // Show loading state
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-teal-50">
+      <div className='min-h-screen bg-gradient-to-br from-emerald-50 via-white to-teal-50'>
         <Navbar />
-        <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="flex items-center justify-center h-64">
-            <div className="text-center">
-              <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-emerald-600" />
-              <p className="text-muted-foreground">Loading your daily quiz...</p>
+        <main className='max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8'>
+          <div className='flex items-center justify-center h-64'>
+            <div className='text-center'>
+              <Loader2 className='h-8 w-8 animate-spin mx-auto mb-4 text-emerald-600' />
+              <p className='text-muted-foreground'>Loading your daily quiz...</p>
             </div>
           </div>
         </main>
@@ -142,10 +146,10 @@ export default function QuizPage() {
   // Show quiz taking interface
   if (mode === 'taking' && currentSession) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-teal-50">
+      <div className='min-h-screen bg-gradient-to-br from-emerald-50 via-white to-teal-50'>
         <Navbar />
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <QuizInterface 
+        <main className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8'>
+          <QuizInterface
             session={currentSession}
             onComplete={handleQuizComplete}
             onBackToLanding={() => setMode('landing')}
@@ -158,10 +162,10 @@ export default function QuizPage() {
   // Show results interface
   if (mode === 'results' && quizResult) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-teal-50">
+      <div className='min-h-screen bg-gradient-to-br from-emerald-50 via-white to-teal-50'>
         <Navbar />
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <QuizResults 
+        <main className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8'>
+          <QuizResults
             result={quizResult}
             onReturnToDashboard={handleReturnToDashboard}
             onTakeAnother={handleTakeAnother}
@@ -173,10 +177,10 @@ export default function QuizPage() {
 
   // Show daily quiz landing page (default)
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-teal-50">
+    <div className='min-h-screen bg-gradient-to-br from-emerald-50 via-white to-teal-50'>
       <Navbar />
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <DailyQuizLanding 
+      <main className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8'>
+        <DailyQuizLanding
           quizStatus={quizStatus}
           onStartQuiz={handleStartQuiz}
           onResumeQuiz={handleResumeQuiz}
