@@ -308,7 +308,7 @@ function OverviewCharts({ data }: { data: any }) {
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {data.breakdown.topSurahs.slice(0, 5).map((surah: any, index: number) => (
+            {(data?.breakdown?.topSurahs || []).slice(0, 5).map((surah: any, index: number) => (
               <div key={surah.surah} className="flex items-center space-x-3">
                 <div className="flex-shrink-0 w-8 h-8 bg-emerald-100 rounded-full flex items-center justify-center">
                   <span className="text-xs font-bold text-emerald-600">#{index + 1}</span>
@@ -410,7 +410,7 @@ function BreakdownCharts({
 }
 
 function TrendsCharts({ data }: { data: any }) {
-  const recentData = data.breakdown.recentActivity.slice(-7); // Last 7 days
+  const recentData = (data?.breakdown?.recentActivity || []).slice(-7); // Last 7 days
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
