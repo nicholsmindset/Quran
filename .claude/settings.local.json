@@ -22,6 +22,7 @@
       "Bash(source:*)",
       "Bash(vercel:*)",
       "Bash(git remote add:*)",
+      "Bash(cd:*)",
       "Bash(cd:*)"
     ],
     "deny": []
