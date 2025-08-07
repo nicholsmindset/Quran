@@ -62,7 +62,7 @@ const config = {
   },
   
   // Module name mapping
-  moduleNameMapping: {
+  moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
     '^@/components/(.*)$': '<rootDir>/src/components/$1',
     '^@/lib/(.*)$': '<rootDir>/src/lib/$1',
@@ -119,7 +119,7 @@ const config = {
         expand: true,
         hideIcon: false,
         pageTitle: 'Qur\'an Verse Challenge Test Report',
-        logoImgPath: './public/logo.png',
+        // logoImgPath: './public/logo.png',
         inlineSource: true,
       },
     ],

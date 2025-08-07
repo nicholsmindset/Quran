@@ -17,7 +17,11 @@
       "Bash(find:*)",
       "Bash(npx playwright:*)",
       "Bash(grep:*)",
-      "Bash(sed:*)"
+      "Bash(sed:*)",
+      "Bash(npx tsx:*)",
+      "Bash(source:*)",
+      "Bash(vercel:*)",
+      "Bash(git remote add:*)"
     ],
     "deny": []
   }

@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -8,49 +9,150 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { 
   Clock, 
-  CheckCircle, 
-  XCircle, 
-  RotateCcw,
   BookOpen,
-  Star
+  Save,
+  ArrowLeft,
+  AlertCircle,
+  Loader2,
+  CheckCircle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import type { Question, Attempt } from '@/types';
+import type { QuizSession, Question } from '@/types';
+import { toast } from '@/hooks/use-toast';
+
+// AI Enhancement Components
+import { AIQuestionContext } from './ai-question-context';
+import { AIHintsSystem } from './ai-hints-system';
+import { AIExplanation } from './ai-explanation';
 
 interface QuizInterfaceProps {
-  questions: Question[];
-  onComplete: (results: Attempt[]) => void;
-  timeLimit?: number; // in minutes
+  session: QuizSession;
+  onComplete: (sessionId: string) => void;
+  onBackToLanding: () => void;
 }
 
-export function QuizInterface({ questions, onComplete, timeLimit = 10 }: QuizInterfaceProps) {
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [selectedAnswers, setSelectedAnswers] = useState<Record<number, string>>({});
-  const [fillInAnswers, setFillInAnswers] = useState<Record<number, string>>({});
-  const [timeRemaining, setTimeRemaining] = useState(timeLimit * 60); // convert to seconds
-  const [isCompleted, setIsCompleted] = useState(false);
-  const [results, setResults] = useState<Attempt[]>([]);
+// API functions
+async function fetchSessionQuestions(sessionId: string): Promise<Question[]> {
+  const response = await fetch(`/api/quiz/session/${sessionId}/questions`);
+  if (!response.ok) {
+    throw new Error('Failed to fetch questions');
+  }
+  const data = await response.json();
+  return data.data?.questions || [];
+}
 
-  const currentQuestion = questions[currentQuestionIndex];
-  const totalQuestions = questions.length;
-  const progress = ((currentQuestionIndex + 1) / totalQuestions) * 100;
+async function saveAnswer(sessionId: string, questionId: string, answer: string): Promise<QuizSession> {
+  const response = await fetch(`/api/quiz/session/${sessionId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ 
+      question_id: questionId, 
+      answer: answer,
+      move_to_next: false // Don't auto-advance for auto-save
+    })
+  });
+  if (!response.ok) {
+    throw new Error('Failed to save answer');
+  }
+  const data = await response.json();
+  return {
+    id: sessionId,
+    userId: 'current-user',
+    dailyQuizId: 'current-quiz',
+    currentQuestionIndex: data.data?.session?.currentQuestionIndex || 0,
+    answers: {},
+    status: data.data?.session?.status || 'in_progress',
+    startedAt: new Date(),
+    lastActivityAt: new Date(data.data?.session?.lastActivityAt || Date.now()),
+    timezone: 'UTC'
+  };
+}
+
+export function QuizInterface({ 
+  session: initialSession, 
+  onComplete, 
+  onBackToLanding 
+}: QuizInterfaceProps) {
+  const [session, setSession] = useState(initialSession);
+  const [currentAnswers, setCurrentAnswers] = useState<Record<string, string>>(initialSession.answers);
+  const [timeRemaining, setTimeRemaining] = useState(10 * 60); // 10 minutes
+  const [lastSaved, setLastSaved] = useState<Date>(new Date());
+  const [isSaving, setIsSaving] = useState(false);
+  
+  // AI Enhancement State
+  const [showExplanation, setShowExplanation] = useState<Record<string, boolean>>({});
+  const [hintsUsed, setHintsUsed] = useState<Record<string, number>>({});
+
+  // Fetch questions for the quiz
+  const { data: questions, isLoading: questionsLoading, error } = useQuery({
+    queryKey: ['session-questions', session.id],
+    queryFn: () => fetchSessionQuestions(session.id),
+  });
+
+  // Auto-save mutation
+  const saveAnswerMutation = useMutation({
+    mutationFn: ({ questionId, answer }: { questionId: string; answer: string }) => 
+      saveAnswer(session.id, questionId, answer),
+    onMutate: () => setIsSaving(true),
+    onSuccess: (updatedSession) => {
+      setSession(updatedSession);
+      setLastSaved(new Date());
+      setIsSaving(false);
+    },
+    onError: (error) => {
+      setIsSaving(false);
+      toast.error({
+        title: 'Save Failed',
+        description: 'Failed to save answer. Please try again.'
+      });
+      console.error('Save error:', error);
+    }
+  });
+
+  // Auto-save functionality
+  const debouncedSave = useCallback(
+    debounce((questionId: string, answer: string) => {
+      if (answer.trim()) {
+        saveAnswerMutation.mutate({ questionId, answer });
+      }
+    }, 2000),
+    [saveAnswerMutation]
+  );
 
   // Timer effect
   useEffect(() => {
-    if (timeRemaining > 0 && !isCompleted) {
-      const timer = setInterval(() => {
-        setTimeRemaining((prev) => {
-          if (prev <= 1) {
-            handleComplete();
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
+    const timer = setInterval(() => {
+      setTimeRemaining((prev) => {
+        if (prev <= 1) {
+          onComplete(session.id);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
 
-      return () => clearInterval(timer);
-    }
-  }, [timeRemaining, isCompleted]);
+    return () => clearInterval(timer);
+  }, [session.id, onComplete]);
+
+  // Auto-save effect (every 10 seconds for any unsaved changes)
+  useEffect(() => {
+    const autoSaveInterval = setInterval(() => {
+      const currentQuestion = questions?.[session.currentQuestionIndex];
+      if (currentQuestion) {
+        const currentAnswer = currentAnswers[currentQuestion.id];
+        const savedAnswer = session.answers[currentQuestion.id];
+        
+        if (currentAnswer !== savedAnswer && currentAnswer?.trim()) {
+          saveAnswerMutation.mutate({ 
+            questionId: currentQuestion.id, 
+            answer: currentAnswer 
+          });
+        }
+      }
+    }, 10000); // Auto-save every 10 seconds
+
+    return () => clearInterval(autoSaveInterval);
+  }, [currentAnswers, session.answers, session.currentQuestionIndex, questions, saveAnswerMutation]);
 
   const formatTime = (seconds: number) => {
     const minutes = Math.floor(seconds / 60);
@@ -58,63 +160,45 @@ export function QuizInterface({ questions, onComplete, timeLimit = 10 }: QuizInt
     return `${minutes}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const handleAnswerSelect = (answer: string) => {
-    setSelectedAnswers({ ...selectedAnswers, [currentQuestionIndex]: answer });
+  const handleAnswerChange = (questionId: string, answer: string) => {
+    setCurrentAnswers(prev => ({ ...prev, [questionId]: answer }));
+    debouncedSave(questionId, answer);
+    
+    // Hide explanation when user changes answer
+    setShowExplanation(prev => ({ ...prev, [questionId]: false }));
+  };
+  
+  const handleAnswerSubmit = (questionId: string) => {
+    // Show explanation after user submits answer
+    setShowExplanation(prev => ({ ...prev, [questionId]: true }));
+  };
+  
+  const handleHintUsed = (questionId: string, level: number) => {
+    setHintsUsed(prev => ({ ...prev, [questionId]: level }));
   };
 
-  const handleFillInAnswer = (answer: string) => {
-    setFillInAnswers({ ...fillInAnswers, [currentQuestionIndex]: answer });
-  };
+  const handleNavigation = (direction: 'prev' | 'next') => {
+    if (!questions) return;
 
-  const getCurrentAnswer = () => {
-    return selectedAnswers[currentQuestionIndex] || fillInAnswers[currentQuestionIndex] || '';
-  };
+    const newIndex = direction === 'next' 
+      ? Math.min(session.currentQuestionIndex + 1, questions.length - 1)
+      : Math.max(session.currentQuestionIndex - 1, 0);
 
-  const handleNext = () => {
-    if (currentQuestionIndex < totalQuestions - 1) {
-      setCurrentQuestionIndex(currentQuestionIndex + 1);
-    } else {
-      handleComplete();
-    }
-  };
-
-  const handlePrevious = () => {
-    if (currentQuestionIndex > 0) {
-      setCurrentQuestionIndex(currentQuestionIndex - 1);
-    }
+    setSession(prev => ({ ...prev, currentQuestionIndex: newIndex }));
   };
 
   const handleComplete = () => {
-    const attempts: Attempt[] = questions.map((question, index) => {
-      const userAnswer = selectedAnswers[index] || fillInAnswers[index] || '';
-      const isCorrect = userAnswer.toLowerCase().trim() === question.answer.toLowerCase().trim();
-      
-      return {
-        id: `attempt-${index}`,
-        userId: 'current-user', // This should come from auth context
-        questionId: question.id,
-        correct: isCorrect,
-        answeredAt: new Date(),
-      };
-    });
-
-    setResults(attempts);
-    setIsCompleted(true);
-    onComplete(attempts);
+    onComplete(session.id);
   };
 
-  const handleRestart = () => {
-    setCurrentQuestionIndex(0);
-    setSelectedAnswers({});
-    setFillInAnswers({});
-    setTimeRemaining(timeLimit * 60);
-    setIsCompleted(false);
-    setResults([]);
+  const getCurrentAnswer = (questionId: string) => {
+    return currentAnswers[questionId] || session.answers[questionId] || '';
   };
 
-  const getScore = () => {
-    const correct = results.filter(r => r.correct).length;
-    return Math.round((correct / totalQuestions) * 100);
+  const canNavigateNext = () => {
+    if (!questions) return false;
+    const currentQuestion = questions[session.currentQuestionIndex];
+    return getCurrentAnswer(currentQuestion.id).trim() !== '';
   };
 
   const getDifficultyColor = (difficulty: Question['difficulty']) => {
@@ -126,85 +210,38 @@ export function QuizInterface({ questions, onComplete, timeLimit = 10 }: QuizInt
     }
   };
 
-  if (isCompleted) {
-    const score = getScore();
-    const correctAnswers = results.filter(r => r.correct).length;
-
+  if (questionsLoading) {
     return (
-      <Card className="w-full max-w-4xl mx-auto">
-        <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold text-emerald-800">
-            Quiz Complete!
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {/* Score Display */}
-          <div className="text-center space-y-4">
-            <div className="text-6xl font-bold text-emerald-600">
-              {score}%
-            </div>
-            <p className="text-lg text-muted-foreground">
-              You got {correctAnswers} out of {totalQuestions} questions correct
-            </p>
-            
-            <div className="flex justify-center">
-              <Badge 
-                variant={score >= 80 ? 'success' : score >= 60 ? 'warning' : 'destructive'}
-                className="text-lg px-4 py-2"
-              >
-                {score >= 80 ? (
-                  <>
-                    <Star className="h-4 w-4 mr-1" />
-                    Excellent!
-                  </>
-                ) : score >= 60 ? (
-                  <>
-                    <CheckCircle className="h-4 w-4 mr-1" />
-                    Good Job!
-                  </>
-                ) : (
-                  <>
-                    <XCircle className="h-4 w-4 mr-1" />
-                    Keep Practicing
-                  </>
-                )}
-              </Badge>
-            </div>
-          </div>
-
-          {/* Results Summary */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="text-center p-4 bg-emerald-50 rounded-lg">
-              <CheckCircle className="h-8 w-8 text-emerald-600 mx-auto mb-2" />
-              <p className="text-2xl font-bold text-emerald-600">{correctAnswers}</p>
-              <p className="text-sm text-emerald-700">Correct Answers</p>
-            </div>
-            <div className="text-center p-4 bg-red-50 rounded-lg">
-              <XCircle className="h-8 w-8 text-red-600 mx-auto mb-2" />
-              <p className="text-2xl font-bold text-red-600">{totalQuestions - correctAnswers}</p>
-              <p className="text-sm text-red-700">Incorrect Answers</p>
-            </div>
-          </div>
-
-          <div className="flex justify-center space-x-4">
-            <Button onClick={handleRestart} variant="outline">
-              <RotateCcw className="h-4 w-4 mr-2" />
-              Take Again
-            </Button>
-            <Button onClick={() => window.location.href = '/dashboard'} variant="islamic">
-              <BookOpen className="h-4 w-4 mr-2" />
-              Back to Dashboard
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="max-w-4xl mx-auto">
+        <Card>
+          <CardContent className="p-12 text-center">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-emerald-600" />
+            <p className="text-muted-foreground">Loading quiz questions...</p>
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 
-  if (!currentQuestion) {
-    return <div>No questions available</div>;
+  if (error || !questions || questions.length === 0) {
+    return (
+      <div className="max-w-4xl mx-auto">
+        <Card>
+          <CardContent className="p-12 text-center">
+            <AlertCircle className="h-8 w-8 mx-auto mb-4 text-red-600" />
+            <p className="text-red-600 mb-4">Failed to load quiz questions</p>
+            <Button onClick={onBackToLanding} variant="outline">
+              Back to Quiz
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
+  const currentQuestion = questions[session.currentQuestionIndex];
+  const totalQuestions = questions.length;
+  const progress = ((session.currentQuestionIndex + 1) / totalQuestions) * 100;
   const isFillInQuestion = currentQuestion.choices.length === 0;
 
   return (
@@ -213,69 +250,132 @@ export function QuizInterface({ questions, onComplete, timeLimit = 10 }: QuizInt
       <Card>
         <CardContent className="p-4">
           <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center space-x-2">
-              <BookOpen className="h-5 w-5 text-emerald-600" />
-              <span className="font-medium">
-                Question {currentQuestionIndex + 1} of {totalQuestions}
-              </span>
-              <Badge 
-                variant="secondary" 
-                className={getDifficultyColor(currentQuestion.difficulty)}
+            <div className="flex items-center space-x-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onBackToLanding}
+                className="flex items-center space-x-2"
               >
-                {currentQuestion.difficulty}
-              </Badge>
+                <ArrowLeft className="h-4 w-4" />
+                <span>Back</span>
+              </Button>
+              
+              <div className="flex items-center space-x-2">
+                <BookOpen className="h-5 w-5 text-emerald-600" />
+                <span className="font-medium">
+                  Question {session.currentQuestionIndex + 1} of {totalQuestions}
+                </span>
+                <Badge 
+                  variant="secondary" 
+                  className={getDifficultyColor(currentQuestion.difficulty)}
+                >
+                  {currentQuestion.difficulty}
+                </Badge>
+              </div>
             </div>
-            <div className="flex items-center space-x-2 text-muted-foreground">
-              <Clock className="h-4 w-4" />
-              <span className={timeRemaining < 60 ? 'text-red-600 font-bold' : ''}>
-                {formatTime(timeRemaining)}
-              </span>
+            
+            <div className="flex items-center space-x-4">
+              {/* Auto-save indicator */}
+              <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                {isSaving ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Saving...</span>
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="h-4 w-4 text-green-500" />
+                    <span>Saved {formatTimeAgo(lastSaved)}</span>
+                  </>
+                )}
+              </div>
+              
+              {/* Timer */}
+              <div className="flex items-center space-x-2 text-muted-foreground">
+                <Clock className="h-4 w-4" />
+                <span className={timeRemaining < 60 ? 'text-red-600 font-bold' : ''}>
+                  {formatTime(timeRemaining)}
+                </span>
+              </div>
             </div>
           </div>
-          <Progress value={progress} className="h-2" />
+          <Progress value={progress} className="h-3" />
         </CardContent>
       </Card>
 
       {/* Question Card */}
       <AnimatePresence mode="wait">
         <motion.div
-          key={currentQuestionIndex}
+          key={session.currentQuestionIndex}
           initial={{ opacity: 0, x: 50 }}
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -50 }}
           transition={{ duration: 0.3 }}
         >
-          <Card className="islamic-pattern">
+          <Card className="islamic-pattern border-emerald-200 shadow-lg">
             <CardHeader>
-              <CardTitle className="text-lg">{currentQuestion.prompt}</CardTitle>
+              <CardTitle className="text-xl leading-relaxed">
+                {currentQuestion.prompt}
+              </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-6">
               {isFillInQuestion ? (
                 // Fill-in-the-blank question
-                <div className="space-y-2">
-                  <Input
-                    placeholder="Type your answer here..."
-                    value={fillInAnswers[currentQuestionIndex] || ''}
-                    onChange={(e) => handleFillInAnswer(e.target.value)}
-                    className="text-lg p-4"
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Input
+                      placeholder="Type your answer here..."
+                      value={getCurrentAnswer(currentQuestion.id)}
+                      onChange={(e) => handleAnswerChange(currentQuestion.id, e.target.value)}
+                      className="text-lg p-4 border-emerald-200 focus:border-emerald-500"
+                      dir="auto"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && getCurrentAnswer(currentQuestion.id).trim()) {
+                          handleAnswerSubmit(currentQuestion.id);
+                        }
+                      }}
+                    />
+                    {getCurrentAnswer(currentQuestion.id).trim() && (
+                      <Button
+                        onClick={() => handleAnswerSubmit(currentQuestion.id)}
+                        size="sm"
+                        className="bg-emerald-600 hover:bg-emerald-700"
+                      >
+                        Submit Answer
+                      </Button>
+                    )}
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Your answer is automatically saved as you type.
+                  </p>
+                  
+                  {/* AI Hints for fill-in-blank questions */}
+                  <AIHintsSystem
+                    questionId={currentQuestion.id}
+                    isEnabled={true}
+                    onHintUsed={(level) => handleHintUsed(currentQuestion.id, level)}
                   />
                 </div>
               ) : (
                 // Multiple choice question
-                <div className="space-y-2">
+                <div className="space-y-3">
                   {currentQuestion.choices.map((choice, index) => {
-                    const isSelected = selectedAnswers[currentQuestionIndex] === choice;
+                    const isSelected = getCurrentAnswer(currentQuestion.id) === choice;
                     return (
                       <Button
                         key={index}
                         variant={isSelected ? 'islamic' : 'outline'}
-                        className="w-full p-4 text-left justify-start h-auto"
-                        onClick={() => handleAnswerSelect(choice)}
+                        className="w-full p-4 text-left justify-start h-auto text-wrap"
+                        onClick={() => {
+                          handleAnswerChange(currentQuestion.id, choice);
+                          handleAnswerSubmit(currentQuestion.id);
+                        }}
                       >
-                        <span className="font-medium mr-2">
+                        <span className="font-medium mr-3 text-emerald-600">
                           {String.fromCharCode(65 + index)}.
                         </span>
-                        {choice}
+                        <span className="flex-1">{choice}</span>
                       </Button>
                     );
                   })}
@@ -285,28 +385,86 @@ export function QuizInterface({ questions, onComplete, timeLimit = 10 }: QuizInt
           </Card>
         </motion.div>
       </AnimatePresence>
+      
+      {/* AI Question Context */}
+      <AIQuestionContext questionId={currentQuestion.id} />
+      
+      {/* AI Explanation (shown after answer submission) */}
+      {showExplanation[currentQuestion.id] && getCurrentAnswer(currentQuestion.id).trim() && (
+        <AIExplanation
+          questionId={currentQuestion.id}
+          userAnswer={getCurrentAnswer(currentQuestion.id)}
+          correctAnswer={currentQuestion.answer}
+          isCorrect={getCurrentAnswer(currentQuestion.id) === currentQuestion.answer}
+        />
+      )}
 
       {/* Navigation */}
       <Card>
         <CardContent className="p-4">
-          <div className="flex justify-between">
+          <div className="flex justify-between items-center">
             <Button
               variant="outline"
-              onClick={handlePrevious}
-              disabled={currentQuestionIndex === 0}
+              onClick={() => handleNavigation('prev')}
+              disabled={session.currentQuestionIndex === 0}
+              className="flex items-center space-x-2"
             >
-              Previous
+              <ArrowLeft className="h-4 w-4" />
+              <span>Previous</span>
             </Button>
-            <Button
-              variant="islamic"
-              onClick={handleNext}
-              disabled={!getCurrentAnswer()}
-            >
-              {currentQuestionIndex === totalQuestions - 1 ? 'Complete' : 'Next'}
-            </Button>
+
+            <div className="text-center space-y-1">
+              <p className="text-sm text-muted-foreground">
+                {Object.keys(currentAnswers).length + Object.keys(session.answers).length} of {totalQuestions} answered
+              </p>
+              {hintsUsed[currentQuestion.id] && (
+                <p className="text-xs text-blue-600">
+                  Hints used: Level {hintsUsed[currentQuestion.id]}
+                </p>
+              )}
+            </div>
+
+            {session.currentQuestionIndex === totalQuestions - 1 ? (
+              <Button
+                variant="islamic"
+                onClick={handleComplete}
+                disabled={!canNavigateNext()}
+                className="flex items-center space-x-2"
+              >
+                <span>Complete Quiz</span>
+                <BookOpen className="h-4 w-4" />
+              </Button>
+            ) : (
+              <Button
+                variant="islamic"
+                onClick={() => handleNavigation('next')}
+                disabled={!canNavigateNext()}
+                className="flex items-center space-x-2"
+              >
+                <span>Next</span>
+                <ArrowLeft className="h-4 w-4 rotate-180" />
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>
     </div>
   );
+}
+
+// Helper functions
+function debounce<T extends (...args: any[]) => any>(func: T, wait: number): T {
+  let timeout: NodeJS.Timeout;
+  return ((...args: any[]) => {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func.apply(null, args), wait);
+  }) as T;
+}
+
+function formatTimeAgo(date: Date): string {
+  const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
+  
+  if (seconds < 60) return 'just now';
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+  return `${Math.floor(seconds / 3600)}h ago`;
 }

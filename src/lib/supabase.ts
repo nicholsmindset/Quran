@@ -15,6 +15,12 @@ export const createServerSupabaseClient = () =>
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   )
 
+// Default export for API routes (server-side)
+export { createServerSupabaseClient as createClient }
+
+// Alternative server client export
+export const createSupabaseClient = createServerSupabaseClient
+
 // Database types for type safety
 export type Database = {
   public: {
@@ -166,6 +172,224 @@ export type Database = {
           created_at?: string
         }
       }
+      daily_quizzes: {
+        Row: {
+          id: string
+          date: string
+          question_ids: string[]
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          date: string
+          question_ids: string[]
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          date?: string
+          question_ids?: string[]
+          created_at?: string
+        }
+      }
+      quiz_sessions: {
+        Row: {
+          id: string
+          user_id: string
+          daily_quiz_id: string
+          current_question_index: number
+          answers: { [key: string]: string }
+          status: 'in_progress' | 'completed' | 'expired'
+          started_at: string
+          completed_at: string | null
+          last_activity_at: string
+          timezone: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          daily_quiz_id: string
+          current_question_index?: number
+          answers?: { [key: string]: string }
+          status?: 'in_progress' | 'completed' | 'expired'
+          started_at?: string
+          completed_at?: string | null
+          last_activity_at?: string
+          timezone: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          daily_quiz_id?: string
+          current_question_index?: number
+          answers?: { [key: string]: string }
+          status?: 'in_progress' | 'completed' | 'expired'
+          started_at?: string
+          completed_at?: string | null
+          last_activity_at?: string
+          timezone?: string
+        }
+      }
+      groups: {
+        Row: {
+          id: string
+          name: string
+          teacher_id: string
+          description: string | null
+          invite_code: string
+          invite_code_expires_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          teacher_id: string
+          description?: string | null
+          invite_code?: string
+          invite_code_expires_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          teacher_id?: string
+          description?: string | null
+          invite_code?: string
+          invite_code_expires_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      group_memberships: {
+        Row: {
+          id: string
+          group_id: string
+          user_id: string
+          role: 'student' | 'assistant'
+          joined_at: string
+        }
+        Insert: {
+          id?: string
+          group_id: string
+          user_id: string
+          role?: 'student' | 'assistant'
+          joined_at?: string
+        }
+        Update: {
+          id?: string
+          group_id?: string
+          user_id?: string
+          role?: 'student' | 'assistant'
+          joined_at?: string
+        }
+      }
+      group_assignments: {
+        Row: {
+          id: string
+          group_id: string
+          title: string
+          description: string | null
+          question_ids: string[]
+          due_date: string | null
+          created_by: string
+          created_at: string
+          updated_at: string
+          is_active: boolean
+        }
+        Insert: {
+          id?: string
+          group_id: string
+          title: string
+          description?: string | null
+          question_ids: string[]
+          due_date?: string | null
+          created_by: string
+          created_at?: string
+          updated_at?: string
+          is_active?: boolean
+        }
+        Update: {
+          id?: string
+          group_id?: string
+          title?: string
+          description?: string | null
+          question_ids?: string[]
+          due_date?: string | null
+          created_by?: string
+          created_at?: string
+          updated_at?: string
+          is_active?: boolean
+        }
+      }
+      group_invites: {
+        Row: {
+          code: string
+          group_id: string
+          created_by: string
+          expires_at: string
+          max_uses: number | null
+          current_uses: number
+          is_active: boolean
+          created_at: string
+        }
+        Insert: {
+          code: string
+          group_id: string
+          created_by: string
+          expires_at: string
+          max_uses?: number | null
+          current_uses?: number
+          is_active?: boolean
+          created_at?: string
+        }
+        Update: {
+          code?: string
+          group_id?: string
+          created_by?: string
+          expires_at?: string
+          max_uses?: number | null
+          current_uses?: number
+          is_active?: boolean
+          created_at?: string
+        }
+      }
+      assignment_results: {
+        Row: {
+          id: string
+          assignment_id: string
+          user_id: string
+          score: number
+          total_questions: number
+          correct_answers: number
+          time_spent: number
+          completed_at: string
+          answers: any // JSON array of AssignmentAnswer
+        }
+        Insert: {
+          id?: string
+          assignment_id: string
+          user_id: string
+          score: number
+          total_questions: number
+          correct_answers: number
+          time_spent: number
+          completed_at?: string
+          answers: any
+        }
+        Update: {
+          id?: string
+          assignment_id?: string
+          user_id?: string
+          score?: number
+          total_questions?: number
+          correct_answers?: number
+          time_spent?: number
+          completed_at?: string
+          answers?: any
+        }
+      }
     }
     Views: {
       [_ in never]: never
@@ -176,6 +400,8 @@ export type Database = {
     Enums: {
       user_role: 'learner' | 'teacher' | 'scholar'
       difficulty_level: 'easy' | 'medium' | 'hard'
+      quiz_session_status: 'in_progress' | 'completed' | 'expired'
+      group_member_role: 'student' | 'assistant'
     }
   }
 }

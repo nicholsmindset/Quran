@@ -185,4 +185,13 @@ function useToast() {
   };
 }
 
+// Convenience methods for common toast types
+toast.success = (props: Omit<Toast, 'variant'>) => {
+  return toast({ ...props, variant: 'success' });
+};
+
+toast.error = (props: Omit<Toast, 'variant'>) => {
+  return toast({ ...props, variant: 'destructive' });
+};
+
 export { useToast, toast };
