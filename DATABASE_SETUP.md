@@ -2,10 +2,11 @@
 
 ## Quick Fix for "relation 'questions' does not exist" Error
 
-The error occurs because the database tables haven't been created in your Supabase project yet. Here are three ways to fix this:
+The error occurs because the database tables haven't been created in your Supabase project yet. Here's the **correct order** to fix this:
 
 ## Method 1: Manual SQL Setup (Recommended)
 
+### **Step 1: Core Database Setup (REQUIRED FIRST)**
 1. **Go to your Supabase Dashboard**
    - Open [supabase.com](https://supabase.com)
    - Navigate to your project
@@ -19,6 +20,15 @@ The error occurs because the database tables haven't been created in your Supaba
 3. **Verify Tables Created**
    - Go to "Table Editor" in the sidebar
    - You should see tables: `users`, `verses`, `questions`, `attempts`, etc.
+
+### **Step 2: Optional AI Features (Run AFTER Step 1)**
+If you want advanced AI features:
+1. Copy the entire contents of `supabase/ai-schema-updates.sql`
+2. Paste it into the SQL Editor
+3. Click "Run" button
+4. This adds AI topics, semantic search, and performance monitoring
+
+**⚠️ IMPORTANT:** You MUST run `complete-setup.sql` before `ai-schema-updates.sql`!
 
 ## Method 2: Automated Script Setup
 

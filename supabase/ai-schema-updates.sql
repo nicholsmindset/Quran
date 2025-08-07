@@ -1,6 +1,28 @@
 -- AI Question Generation Schema Updates
 -- Enhanced AI features for Quran Verse Challenge platform
--- Run this in Supabase SQL Editor to add comprehensive AI capabilities
+-- IMPORTANT: This script requires the main database schema to be set up first!
+-- Run supabase/complete-setup.sql BEFORE running this file.
+
+-- Check if core tables exist before proceeding
+DO $$
+BEGIN
+    -- Check if questions table exists
+    IF NOT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'questions') THEN
+        RAISE EXCEPTION 'Core tables not found. Please run complete-setup.sql first before applying AI updates.';
+    END IF;
+    
+    -- Check if users table exists  
+    IF NOT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'users') THEN
+        RAISE EXCEPTION 'Users table not found. Please run complete-setup.sql first before applying AI updates.';
+    END IF;
+    
+    -- Check if verses table exists
+    IF NOT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'verses') THEN
+        RAISE EXCEPTION 'Verses table not found. Please run complete-setup.sql first before applying AI updates.';
+    END IF;
+    
+    RAISE NOTICE 'Core tables verified. Proceeding with AI schema updates...';
+END $$;
 
 -- Add columns to questions table for AI-generated content
 ALTER TABLE questions 
@@ -15,9 +37,20 @@ ADD COLUMN IF NOT EXISTS context_verses JSONB DEFAULT '[]'::jsonb,
 ADD COLUMN IF NOT EXISTS difficulty_justification TEXT,
 ADD COLUMN IF NOT EXISTS islamic_validation JSONB DEFAULT '{"checked": false}'::jsonb;
 
--- Create index for vector similarity search
-CREATE INDEX IF NOT EXISTS questions_embedding_idx ON questions 
-USING ivfflat (embedding vector_cosine_ops);
+-- Create index for vector similarity search (requires pgvector extension)
+-- Note: You may need to enable pgvector extension in Supabase first
+DO $$
+BEGIN
+    -- Try to create the index, but don't fail if pgvector is not available
+    BEGIN
+        CREATE INDEX IF NOT EXISTS questions_embedding_idx ON questions 
+        USING ivfflat (embedding vector_cosine_ops);
+        RAISE NOTICE 'Vector index created successfully.';
+    EXCEPTION 
+        WHEN OTHERS THEN 
+            RAISE WARNING 'Could not create vector index. pgvector extension may not be enabled: %', SQLERRM;
+    END;
+END $$;
 
 -- Create batch_runs table for monitoring AI generation
 CREATE TABLE IF NOT EXISTS batch_runs (
@@ -41,6 +74,8 @@ CREATE TABLE IF NOT EXISTS batch_runs (
 -- Create index for batch runs monitoring
 CREATE INDEX IF NOT EXISTS batch_runs_run_at_idx ON batch_runs(run_at);
 CREATE INDEX IF NOT EXISTS batch_runs_success_idx ON batch_runs(success);
+CREATE INDEX IF NOT EXISTS batch_runs_batch_type_idx ON batch_runs(batch_type);
+CREATE INDEX IF NOT EXISTS batch_runs_completed_at_idx ON batch_runs(completed_at);
 
 -- Create question_topics table for better topic management
 CREATE TABLE IF NOT EXISTS question_topics (
@@ -166,9 +201,10 @@ BEGIN
   
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Create trigger for automatic status updates
+DROP TRIGGER IF EXISTS update_verse_processing_status_trigger ON questions;
 CREATE TRIGGER update_verse_processing_status_trigger
   AFTER INSERT ON questions
   FOR EACH ROW
@@ -197,6 +233,13 @@ RETURNS TABLE (
   ai_generated BOOLEAN
 ) AS $$
 BEGIN
+  -- Check if vector operations are available
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_extension WHERE extname = 'vector'
+  ) THEN
+    RAISE EXCEPTION 'pgvector extension is required for semantic search functionality';
+  END IF;
+
   RETURN QUERY
   SELECT 
     q.id,
@@ -219,75 +262,32 @@ BEGIN
     AND (1 - (q.embedding <=> query_embedding)) >= similarity_threshold
   ORDER BY q.embedding <=> query_embedding
   LIMIT max_results;
+EXCEPTION
+  WHEN OTHERS THEN
+    -- Fallback to text-based search if vector search fails
+    RAISE WARNING 'Vector search failed, using text-based fallback: %', SQLERRM;
+    RETURN QUERY
+    SELECT 
+      q.id,
+      0.5::float as similarity, -- Default similarity score
+      q.prompt,
+      q.answer,
+      q.difficulty,
+      q.topics,
+      v.surah,
+      v.ayah,
+      v.arabic_text,
+      q.confidence_score,
+      q.ai_generated
+    FROM questions q
+    JOIN verses v ON q.verse_id = v.id
+    WHERE (include_pending OR q.approved_at IS NOT NULL)
+      AND (difficulty_filter IS NULL OR q.difficulty = difficulty_filter)
+      AND (topic_filter IS NULL OR topic_filter = ANY(q.topics))
+    ORDER BY q.created_at DESC
+    LIMIT max_results;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
-
--- Create improved RLS policies for new AI features
-
--- Policy for batch_runs (only scholars and admins can view)
-CREATE POLICY "batch_runs_select_policy" ON batch_runs
-  FOR SELECT USING (
-    auth.jwt() ->> 'role' IN ('scholar', 'admin')
-    OR auth.uid()::text = created_by
-  );
-
--- Policy for question_topics (everyone can view, only admins can modify)
-CREATE POLICY "question_topics_select_policy" ON question_topics
-  FOR SELECT USING (true);
-
-CREATE POLICY "question_topics_modify_policy" ON question_topics
-  FOR ALL USING (auth.jwt() ->> 'role' = 'admin');
-
--- Policy for verse_processing_status (scholars and admins can view)
-CREATE POLICY "verse_processing_select_policy" ON verse_processing_status
-  FOR SELECT USING (
-    auth.jwt() ->> 'role' IN ('scholar', 'admin')
-  );
-
--- Enable RLS on new tables
-ALTER TABLE batch_runs ENABLE ROW LEVEL SECURITY;
-ALTER TABLE question_topics ENABLE ROW LEVEL SECURITY;
-ALTER TABLE question_topic_links ENABLE ROW LEVEL SECURITY;
-ALTER TABLE verse_processing_status ENABLE ROW LEVEL SECURITY;
-
--- Create indexes for better performance
-CREATE INDEX IF NOT EXISTS questions_topics_gin_idx ON questions USING gin(topics);
-CREATE INDEX IF NOT EXISTS questions_ai_generated_idx ON questions(ai_generated);
-CREATE INDEX IF NOT EXISTS questions_confidence_idx ON questions(confidence_score);
-CREATE INDEX IF NOT EXISTS questions_approved_by_idx ON questions(approved_by);
-
--- Create view for scholar moderation queue with AI metadata
-CREATE OR REPLACE VIEW scholar_moderation_queue AS
-SELECT 
-  q.id,
-  q.prompt,
-  q.choices,
-  q.answer,
-  q.difficulty,
-  q.topics,
-  q.explanation,
-  q.question_type,
-  q.ai_generated,
-  q.confidence_score,
-  q.created_at,
-  q.created_by,
-  v.surah,
-  v.ayah,
-  v.arabic_text,
-  v.translation_en,
-  u.email as created_by_email
-FROM questions q
-JOIN verses v ON q.verse_id = v.id
-LEFT JOIN users u ON q.created_by = u.id::text
-WHERE q.approved_at IS NULL
-ORDER BY 
-  q.confidence_score DESC, -- Higher confidence first
-  q.created_at ASC; -- Then by creation time
-
--- Grant necessary permissions
-GRANT USAGE ON SCHEMA public TO authenticated;
-GRANT ALL ON ALL TABLES IN SCHEMA public TO authenticated;
-GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO authenticated;
 
 -- Create comprehensive function to get AI generation statistics
 CREATE OR REPLACE FUNCTION get_ai_generation_stats(days_back INTEGER DEFAULT 7)
@@ -387,28 +387,6 @@ BEGIN
   RETURN result;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
-
--- Add comment for documentation
-COMMENT ON FUNCTION get_ai_generation_stats IS 'Get comprehensive statistics about AI question generation system';
-COMMENT ON TABLE batch_runs IS 'Tracks AI question generation batch processing runs';
-COMMENT ON TABLE question_topics IS 'Hierarchical topic classification for questions';
-COMMENT ON TABLE verse_processing_status IS 'Tracks which verses have been processed for question generation';
-
--- Insert sample priority scores for commonly memorized surahs
-INSERT INTO verse_processing_status (verse_id, priority_score)
-SELECT v.id, 
-  CASE 
-    WHEN v.surah = 1 THEN 100  -- Al-Fatiha (highest priority)
-    WHEN v.surah IN (112, 113, 114) THEN 90  -- Last 3 surahs
-    WHEN v.surah IN (110, 108, 107, 106, 105, 104, 103, 102, 101, 100) THEN 80  -- Short surahs
-    WHEN v.surah = 2 AND v.ayah <= 10 THEN 70  -- Beginning of Al-Baqarah
-    WHEN v.surah IN (18, 36, 67) THEN 60  -- Commonly recited longer surahs
-    ELSE 10  -- Default priority
-  END
-FROM verses v
-WHERE NOT EXISTS (
-  SELECT 1 FROM verse_processing_status vps WHERE vps.verse_id = v.id
-);
 
 -- Create function to validate Islamic content using AI
 CREATE OR REPLACE FUNCTION validate_islamic_content(
@@ -513,8 +491,10 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- Add new indices for enhanced performance
 CREATE INDEX IF NOT EXISTS questions_generation_model_idx ON questions(generation_model) WHERE ai_generated = true;
 CREATE INDEX IF NOT EXISTS questions_islamic_validation_idx ON questions USING gin(islamic_validation) WHERE ai_generated = true;
-CREATE INDEX IF NOT EXISTS batch_runs_batch_type_idx ON batch_runs(batch_type);
-CREATE INDEX IF NOT EXISTS batch_runs_completed_at_idx ON batch_runs(completed_at);
+CREATE INDEX IF NOT EXISTS questions_topics_gin_idx ON questions USING gin(topics);
+CREATE INDEX IF NOT EXISTS questions_ai_generated_idx ON questions(ai_generated);
+CREATE INDEX IF NOT EXISTS questions_confidence_idx ON questions(confidence_score);
+CREATE INDEX IF NOT EXISTS questions_approved_by_idx ON questions(approved_by);
 
 -- Create materialized view for AI performance dashboard
 CREATE MATERIALIZED VIEW IF NOT EXISTS ai_performance_dashboard AS
@@ -571,6 +551,88 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+-- Create improved RLS policies for new AI features
+
+-- Policy for batch_runs (only scholars and admins can view)
+ALTER TABLE batch_runs ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "batch_runs_select_policy" ON batch_runs;
+CREATE POLICY "batch_runs_select_policy" ON batch_runs
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM users 
+      WHERE id = auth.uid() 
+      AND role IN ('scholar', 'admin')
+    )
+    OR initiated_by = auth.uid()
+  );
+
+-- Policy for question_topics (everyone can view, only admins can modify)
+ALTER TABLE question_topics ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "question_topics_select_policy" ON question_topics;
+CREATE POLICY "question_topics_select_policy" ON question_topics
+  FOR SELECT USING (auth.uid() IS NOT NULL);
+
+DROP POLICY IF EXISTS "question_topics_modify_policy" ON question_topics;
+CREATE POLICY "question_topics_modify_policy" ON question_topics
+  FOR ALL USING (
+    EXISTS (
+      SELECT 1 FROM users 
+      WHERE id = auth.uid() 
+      AND role IN ('scholar', 'admin')
+    )
+  );
+
+-- Policy for verse_processing_status (scholars and admins can view)
+ALTER TABLE verse_processing_status ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "verse_processing_select_policy" ON verse_processing_status;
+CREATE POLICY "verse_processing_select_policy" ON verse_processing_status
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM users 
+      WHERE id = auth.uid() 
+      AND role IN ('scholar', 'admin')
+    )
+  );
+
+-- Enable RLS on junction table
+ALTER TABLE question_topic_links ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "question_topic_links_select_policy" ON question_topic_links;
+CREATE POLICY "question_topic_links_select_policy" ON question_topic_links
+  FOR SELECT USING (auth.uid() IS NOT NULL);
+
+-- Create view for scholar moderation queue with AI metadata
+CREATE OR REPLACE VIEW scholar_moderation_queue AS
+SELECT 
+  q.id,
+  q.prompt,
+  q.choices,
+  q.answer,
+  q.difficulty,
+  q.topics,
+  q.explanation,
+  q.question_type,
+  q.ai_generated,
+  q.confidence_score,
+  q.created_at,
+  q.created_by,
+  v.surah,
+  v.ayah,
+  v.arabic_text,
+  v.translation_en,
+  u.email as created_by_email
+FROM questions q
+JOIN verses v ON q.verse_id = v.id
+LEFT JOIN users u ON q.created_by = u.id
+WHERE q.approved_at IS NULL
+ORDER BY 
+  q.confidence_score DESC, -- Higher confidence first
+  q.created_at ASC; -- Then by creation time
+
+-- Grant necessary permissions
+GRANT USAGE ON SCHEMA public TO authenticated;
+GRANT ALL ON ALL TABLES IN SCHEMA public TO authenticated;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO authenticated;
+
 -- Grant permissions for new functions
 GRANT EXECUTE ON FUNCTION search_questions_by_similarity TO authenticated;
 GRANT EXECUTE ON FUNCTION get_ai_generation_stats TO authenticated;
@@ -579,10 +641,41 @@ GRANT EXECUTE ON FUNCTION generate_question_hint TO authenticated;
 GRANT EXECUTE ON FUNCTION refresh_ai_performance_dashboard TO authenticated;
 GRANT SELECT ON ai_performance_dashboard TO authenticated;
 
+-- Insert sample priority scores for commonly memorized surahs
+INSERT INTO verse_processing_status (verse_id, priority_score)
+SELECT v.id, 
+  CASE 
+    WHEN v.surah = 1 THEN 100  -- Al-Fatiha (highest priority)
+    WHEN v.surah IN (112, 113, 114) THEN 90  -- Last 3 surahs
+    WHEN v.surah IN (110, 108, 107, 106, 105, 104, 103, 102, 101, 100) THEN 80  -- Short surahs
+    WHEN v.surah = 2 AND v.ayah <= 10 THEN 70  -- Beginning of Al-Baqarah
+    WHEN v.surah IN (18, 36, 67) THEN 60  -- Commonly recited longer surahs
+    ELSE 10  -- Default priority
+  END
+FROM verses v
+WHERE NOT EXISTS (
+  SELECT 1 FROM verse_processing_status vps WHERE vps.verse_id = v.id
+);
+
 -- Add comments for better documentation
-COMMENT ON FUNCTION search_questions_by_similarity IS 'Enhanced semantic search with filtering capabilities';
+COMMENT ON FUNCTION search_questions_by_similarity IS 'Enhanced semantic search with filtering capabilities and fallback support';
 COMMENT ON FUNCTION validate_islamic_content IS 'Validates question content for Islamic accuracy and cultural sensitivity';
 COMMENT ON FUNCTION generate_question_hint IS 'Generates contextual hints for quiz questions';
 COMMENT ON MATERIALIZED VIEW ai_performance_dashboard IS 'Performance metrics dashboard for AI question generation system';
+COMMENT ON TABLE batch_runs IS 'Tracks AI question generation batch processing runs with detailed metadata';
+COMMENT ON TABLE question_topics IS 'Hierarchical topic classification for questions with comprehensive Islamic taxonomy';
+COMMENT ON TABLE verse_processing_status IS 'Tracks which verses have been processed for question generation with priority scoring';
 
-COMMIT;
+-- Final success message
+DO $$
+BEGIN
+    RAISE NOTICE 'AI schema updates completed successfully! Enhanced features now available:';
+    RAISE NOTICE '• 45+ Islamic topics taxonomy';
+    RAISE NOTICE '• Advanced semantic search with fallbacks';
+    RAISE NOTICE '• AI performance dashboard and metrics';
+    RAISE NOTICE '• Islamic content validation system';
+    RAISE NOTICE '• Contextual hint generation';
+    RAISE NOTICE '• Comprehensive batch processing tracking';
+    RAISE NOTICE '';
+    RAISE NOTICE 'Note: Some features require pgvector extension for full functionality.';
+END $$;
