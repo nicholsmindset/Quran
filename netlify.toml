@@ -1,0 +1,29 @@
+[build]
+  publish = ".next"
+  command = "npm run build"
+
+[build.environment]
+  NODE_VERSION = "18"
+  NPM_VERSION = "10"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+[functions]
+  node_bundler = "esbuild"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Environment variables that need to be set in Netlify dashboard:
+# NEXT_PUBLIC_SUPABASE_URL = your_supabase_project_url
+# NEXT_PUBLIC_SUPABASE_ANON_KEY = your_supabase_anon_key
+# SUPABASE_SERVICE_ROLE_KEY = your_supabase_service_role_key (for server-side operations)
+
+# Optional email service configuration:
+# RESEND_API_KEY = your_resend_api_key (if using Resend for emails)
+# SMTP_HOST = your_smtp_host (if using custom SMTP)
+# SMTP_USER = your_smtp_user
+# SMTP_PASSWORD = your_smtp_password
