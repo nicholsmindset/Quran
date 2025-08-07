@@ -102,6 +102,36 @@ export function EnhancedDashboard({ className }: EnhancedDashboardProps) {
           streaks: {
             current: 3,
             longest: 7
+          },
+          breakdown: {
+            byDifficulty: {
+              easy: {
+                attempted: 25,
+                correct: 22,
+                accuracy: 88
+              },
+              medium: {
+                attempted: 35,
+                correct: 26,
+                accuracy: 74
+              },
+              hard: {
+                attempted: 25,
+                correct: 15,
+                accuracy: 60
+              }
+            },
+            byTopic: {
+              'Surah Al-Fatiha': { attempted: 20, correct: 17, accuracy: 85 },
+              'Prayer Times': { attempted: 15, correct: 12, accuracy: 80 },
+              'Islamic History': { attempted: 25, correct: 18, accuracy: 72 },
+              'Quranic Stories': { attempted: 25, correct: 21, accuracy: 84 }
+            },
+            topSurahs: [
+              { name: 'Al-Fatiha', attempted: 20, correct: 17, accuracy: 85 },
+              { name: 'Al-Baqarah', attempted: 15, correct: 12, accuracy: 80 },
+              { name: 'Al-Imran', attempted: 12, correct: 9, accuracy: 75 }
+            ]
           }
         },
         dailyQuizStatus: {
