@@ -49,7 +49,13 @@ const DEFAULT_CONFIG: QuestionGenerationConfig = {
  */
 export class AIQuestionGenerator {
   private config: QuestionGenerationConfig;
-  private supabase = createServerSupabaseClient();
+  private _supabase: ReturnType<typeof createServerSupabaseClient> | null = null;
+  private get supabase() {
+    if (!this._supabase) {
+      this._supabase = createServerSupabaseClient();
+    }
+    return this._supabase;
+  }
 
   constructor(config: Partial<QuestionGenerationConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };

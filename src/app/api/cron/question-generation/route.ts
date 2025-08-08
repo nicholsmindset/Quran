@@ -12,6 +12,8 @@ export async function GET(request: NextRequest) {
   try {
     // Verify cron secret for security
     const authHeader = request.headers.get('authorization');
+    const url = new URL(request.url);
+    const secretQuery = url.searchParams.get('secret');
     const expectedSecret = process.env.CRON_SECRET;
 
     if (!expectedSecret) {
@@ -22,7 +24,11 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    if (!authHeader || authHeader !== `Bearer ${expectedSecret}`) {
+    const isAuthorized =
+      (authHeader && authHeader === `Bearer ${expectedSecret}`) ||
+      (secretQuery && secretQuery === expectedSecret);
+
+    if (!isAuthorized) {
       console.error('Unauthorized cron request');
       return NextResponse.json(
         { error: 'Unauthorized' },

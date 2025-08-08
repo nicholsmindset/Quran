@@ -1,11 +1,37 @@
+import 'whatwg-fetch'
 import '@testing-library/jest-dom'
 import { TextEncoder, TextDecoder } from 'util'
 import { createServer } from 'http'
-import { server } from './mocks/server'
 
 // Polyfills for Node.js environment
-global.TextEncoder = TextEncoder
-global.TextDecoder = TextDecoder as any
+;(globalThis as any).TextEncoder = TextEncoder
+;(globalThis as any).TextDecoder = TextDecoder as any
+
+// Node 18+ web streams polyfills for MSW and fetch
+;(globalThis as any).ReadableStream = (globalThis as any).ReadableStream || require('stream/web').ReadableStream
+;(globalThis as any).TransformStream = (globalThis as any).TransformStream || require('stream/web').TransformStream
+
+// BroadcastChannel shim for jsdom/Node test env
+if (!(globalThis as any).BroadcastChannel) {
+  class BroadcastChannelShim {
+    name: string
+    onmessage: ((this: BroadcastChannel, ev: MessageEvent) => any) | null = null
+    constructor(name: string) {
+      this.name = name
+    }
+    postMessage(_message: any) {}
+    close() {}
+    addEventListener(_type: string, _listener: any) {}
+    removeEventListener(_type: string, _listener: any) {}
+    dispatchEvent(_event: Event): boolean { return true }
+  }
+  ;(globalThis as any).BroadcastChannel = BroadcastChannelShim as any
+}
+
+// Defer MSW server import until after polyfills are set
+// Use require to avoid ESM import hoisting so polyfills are applied first
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { server } = require('./mocks/server')
 
 // Mock environment variables
 process.env.NEXT_PUBLIC_SUPABASE_URL = 'http://localhost:54321'

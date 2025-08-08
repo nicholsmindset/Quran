@@ -15,7 +15,13 @@ import type {
 } from '@/types'
 
 export class GroupManagementService {
-  private supabase = createServerSupabaseClient()
+  private _supabase: ReturnType<typeof createServerSupabaseClient> | null = null;
+  private get supabase() {
+    if (!this._supabase) {
+      this._supabase = createServerSupabaseClient();
+    }
+    return this._supabase;
+  }
 
   // Group Management
   async createGroup(teacherId: string, data: CreateGroupRequest): Promise<ApiResponse<Group>> {
