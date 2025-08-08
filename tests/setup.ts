@@ -56,14 +56,15 @@ jest.mock('next/navigation', () => ({
   usePathname: () => '/',
 }))
 
-// Mock Supabase client
-jest.mock('@/lib/supabase', () => ({
-  supabase: {
+// Mock Supabase client (module-wide default), with overridable factories
+jest.mock('@/lib/supabase', () => {
+  const mockClient = {
     auth: {
       getUser: jest.fn(),
       signUp: jest.fn(),
       signInWithPassword: jest.fn(),
       signOut: jest.fn(),
+      setSession: jest.fn(),
       onAuthStateChange: jest.fn(),
     },
     from: jest.fn(() => ({
@@ -74,44 +75,37 @@ jest.mock('@/lib/supabase', () => ({
       eq: jest.fn().mockReturnThis(),
       gte: jest.fn().mockReturnThis(),
       lte: jest.fn().mockReturnThis(),
+      in: jest.fn().mockReturnThis(),
+      not: jest.fn().mockReturnThis(),
       order: jest.fn().mockReturnThis(),
       limit: jest.fn().mockReturnThis(),
       single: jest.fn(),
+      upsert: jest.fn().mockReturnThis(),
+      rpc: jest.fn().mockReturnThis(),
+      range: jest.fn().mockReturnThis(),
     })),
-  },
-  createClient: jest.fn(() => ({
-    auth: {
-      getUser: jest.fn(),
-      signUp: jest.fn(),
-      signInWithPassword: jest.fn(),
-      signOut: jest.fn(),
-    },
-    from: jest.fn(() => ({
-      select: jest.fn().mockReturnThis(),
-      insert: jest.fn().mockReturnThis(),
-      update: jest.fn().mockReturnThis(),
-      delete: jest.fn().mockReturnThis(),
-      eq: jest.fn().mockReturnThis(),
-      gte: jest.fn().mockReturnThis(),
-      lte: jest.fn().mockReturnThis(),
-      order: jest.fn().mockReturnThis(),
-      limit: jest.fn().mockReturnThis(),
-      single: jest.fn(),
-    })),
-  })),
-}))
+    select: jest.fn().mockReturnThis(),
+    single: jest.fn(),
+  }
 
-// Mock OpenAI
+  const createServerSupabaseClient = jest.fn(() => mockClient)
+  const createBrowserSupabaseClient = jest.fn(() => mockClient)
+  const createClient = createServerSupabaseClient
+
+  return {
+    __esModule: true,
+    createServerSupabaseClient,
+    createBrowserSupabaseClient,
+    createClient,
+  }
+})
+
+// Mock OpenAI default export
 jest.mock('openai', () => ({
-  OpenAI: jest.fn().mockImplementation(() => ({
-    embeddings: {
-      create: jest.fn(),
-    },
-    chat: {
-      completions: {
-        create: jest.fn(),
-      },
-    },
+  __esModule: true,
+  default: jest.fn().mockImplementation(() => ({
+    embeddings: { create: jest.fn() },
+    chat: { completions: { create: jest.fn() } },
   })),
 }))
 

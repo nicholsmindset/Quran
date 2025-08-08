@@ -1,5 +1,5 @@
 import React from 'react'
-import { render, screen, fireEvent, waitFor, act } from '../../utils/testing-library-utils'
+import { render, screen, fireEvent, waitFor, act } from '../../../tests/utils/testing-library-utils'
 import { QuizInterface } from '@/components/quiz/quiz-interface'
 import { Question, Attempt } from '@/types'
 import { SAMPLE_QUIZ_QUESTIONS } from '../../fixtures/islamic-content'
