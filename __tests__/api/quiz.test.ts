@@ -1,4 +1,3 @@
-import { describe, test, expect, beforeEach, afterEach } from '@jest/test-runner'
 import { testApiHandler } from 'next-test-api-route-handler'
 import * as dailyQuizHandler from '@/app/api/quiz/daily/route'
 import * as startSessionHandler from '@/app/api/quiz/session/start/route'

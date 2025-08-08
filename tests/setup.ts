@@ -1,11 +1,37 @@
+import 'whatwg-fetch'
 import '@testing-library/jest-dom'
 import { TextEncoder, TextDecoder } from 'util'
 import { createServer } from 'http'
-import { server } from './mocks/server'
 
 // Polyfills for Node.js environment
-global.TextEncoder = TextEncoder
-global.TextDecoder = TextDecoder as any
+;(globalThis as any).TextEncoder = TextEncoder
+;(globalThis as any).TextDecoder = TextDecoder as any
+
+// Node 18+ web streams polyfills for MSW and fetch
+;(globalThis as any).ReadableStream = (globalThis as any).ReadableStream || require('stream/web').ReadableStream
+;(globalThis as any).TransformStream = (globalThis as any).TransformStream || require('stream/web').TransformStream
+
+// BroadcastChannel shim for jsdom/Node test env
+if (!(globalThis as any).BroadcastChannel) {
+  class BroadcastChannelShim {
+    name: string
+    onmessage: ((this: BroadcastChannel, ev: MessageEvent) => any) | null = null
+    constructor(name: string) {
+      this.name = name
+    }
+    postMessage(_message: any) {}
+    close() {}
+    addEventListener(_type: string, _listener: any) {}
+    removeEventListener(_type: string, _listener: any) {}
+    dispatchEvent(_event: Event): boolean { return true }
+  }
+  ;(globalThis as any).BroadcastChannel = BroadcastChannelShim as any
+}
+
+// Defer MSW server import until after polyfills are set
+// Use require to avoid ESM import hoisting so polyfills are applied first
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { server } = require('./mocks/server')
 
 // Mock environment variables
 process.env.NEXT_PUBLIC_SUPABASE_URL = 'http://localhost:54321'
@@ -30,14 +56,15 @@ jest.mock('next/navigation', () => ({
   usePathname: () => '/',
 }))
 
-// Mock Supabase client
-jest.mock('@/lib/supabase', () => ({
-  supabase: {
+// Mock Supabase client (module-wide default), with overridable factories
+jest.mock('@/lib/supabase', () => {
+  const mockClient = {
     auth: {
       getUser: jest.fn(),
       signUp: jest.fn(),
       signInWithPassword: jest.fn(),
       signOut: jest.fn(),
+      setSession: jest.fn(),
       onAuthStateChange: jest.fn(),
     },
     from: jest.fn(() => ({
@@ -48,44 +75,37 @@ jest.mock('@/lib/supabase', () => ({
       eq: jest.fn().mockReturnThis(),
       gte: jest.fn().mockReturnThis(),
       lte: jest.fn().mockReturnThis(),
+      in: jest.fn().mockReturnThis(),
+      not: jest.fn().mockReturnThis(),
       order: jest.fn().mockReturnThis(),
       limit: jest.fn().mockReturnThis(),
       single: jest.fn(),
+      upsert: jest.fn().mockReturnThis(),
+      rpc: jest.fn().mockReturnThis(),
+      range: jest.fn().mockReturnThis(),
     })),
-  },
-  createClient: jest.fn(() => ({
-    auth: {
-      getUser: jest.fn(),
-      signUp: jest.fn(),
-      signInWithPassword: jest.fn(),
-      signOut: jest.fn(),
-    },
-    from: jest.fn(() => ({
-      select: jest.fn().mockReturnThis(),
-      insert: jest.fn().mockReturnThis(),
-      update: jest.fn().mockReturnThis(),
-      delete: jest.fn().mockReturnThis(),
-      eq: jest.fn().mockReturnThis(),
-      gte: jest.fn().mockReturnThis(),
-      lte: jest.fn().mockReturnThis(),
-      order: jest.fn().mockReturnThis(),
-      limit: jest.fn().mockReturnThis(),
-      single: jest.fn(),
-    })),
-  })),
-}))
+    select: jest.fn().mockReturnThis(),
+    single: jest.fn(),
+  }
 
-// Mock OpenAI
+  const createServerSupabaseClient = jest.fn(() => mockClient)
+  const createBrowserSupabaseClient = jest.fn(() => mockClient)
+  const createClient = createServerSupabaseClient
+
+  return {
+    __esModule: true,
+    createServerSupabaseClient,
+    createBrowserSupabaseClient,
+    createClient,
+  }
+})
+
+// Mock OpenAI default export
 jest.mock('openai', () => ({
-  OpenAI: jest.fn().mockImplementation(() => ({
-    embeddings: {
-      create: jest.fn(),
-    },
-    chat: {
-      completions: {
-        create: jest.fn(),
-      },
-    },
+  __esModule: true,
+  default: jest.fn().mockImplementation(() => ({
+    embeddings: { create: jest.fn() },
+    chat: { completions: { create: jest.fn() } },
   })),
 }))
 

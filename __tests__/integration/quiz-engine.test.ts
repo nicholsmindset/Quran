@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeEach, afterEach } from '@jest/test-runner'
+// Rely on Jest globals; no direct import from '@jest/test-runner'
 import { 
   generateDailyQuiz,
   getCurrentDailyQuiz,

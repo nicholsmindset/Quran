@@ -42,18 +42,13 @@ interface ErrorReport {
 }
 
 export class PerformanceMonitor {
-  private supabase;
+  private _supabase: ReturnType<typeof createClient> | null = null;
   private config: PerformanceConfig;
   private metricsBuffer: PerformanceMetric[] = [];
   private errorsBuffer: ErrorReport[] = [];
   private flushInterval: NodeJS.Timeout | null = null;
 
   constructor(config?: Partial<PerformanceConfig>) {
-    this.supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
-
     this.config = {
       enableMetrics: true,
       enableTracing: true,
@@ -67,9 +62,20 @@ export class PerformanceMonitor {
 
     if (typeof window !== 'undefined') {
       this.initializeBrowserMonitoring();
+      this.startPeriodicFlush();
     }
+  }
 
-    this.startPeriodicFlush();
+  private get supabase() {
+    if (!this._supabase) {
+      const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+      if (!url || !key) {
+        throw new Error('Supabase env vars are not configured');
+      }
+      this._supabase = createClient(url, key);
+    }
+    return this._supabase;
   }
 
   // Core Web Vitals monitoring

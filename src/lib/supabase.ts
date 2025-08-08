@@ -3,15 +3,30 @@ import { createClient } from '@supabase/supabase-js'
 
 // Browser client for client-side operations
 export const createBrowserSupabaseClient = () => {
+  // Avoid accessing env or real browser client during SSR/prerender
+  if (typeof window === 'undefined') {
+    // Minimal no-op mock to allow server-side rendering without env vars
+    return {
+      auth: {
+        getSession: async () => ({ data: { session: null } }),
+        onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
+        signInWithPassword: async () => ({ data: null, error: null }),
+        signUp: async () => ({ data: { user: null }, error: null }),
+        signOut: async () => ({ error: null }),
+      },
+      from: () => ({
+        select: () => ({ eq: () => ({ single: async () => ({ data: null, error: null }) }) }),
+        insert: async () => ({ data: null, error: null }),
+      }),
+    } as any
+  }
+
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   
-  if (!url) {
-    throw new Error('NEXT_PUBLIC_SUPABASE_URL is not defined')
-  }
-  
-  if (!anonKey) {
-    throw new Error('NEXT_PUBLIC_SUPABASE_ANON_KEY is not defined')
+  if (!url || !anonKey) {
+    // In the browser, these MUST be defined. Throw to surface misconfiguration.
+    throw new Error('NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY must be defined')
   }
   
   return createBrowserClient(url, anonKey)

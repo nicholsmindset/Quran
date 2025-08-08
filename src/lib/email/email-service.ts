@@ -12,15 +12,10 @@ interface EmailConfig {
 }
 
 export class EmailService {
-  private supabase;
+  private _supabase: ReturnType<typeof createClient> | null = null;
   private config: EmailConfig;
 
   constructor() {
-    this.supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
-    
     this.config = {
       smtpHost: process.env.SMTP_HOST || 'smtp.resend.com',
       smtpPort: parseInt(process.env.SMTP_PORT || '587'),
@@ -29,6 +24,18 @@ export class EmailService {
       fromEmail: process.env.FROM_EMAIL || 'noreply@quranversechallenge.com',
       fromName: process.env.FROM_NAME || 'Qur\'an Verse Challenge'
     };
+  }
+
+  private get supabase() {
+    if (!this._supabase) {
+      const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+      if (!url || !serviceKey) {
+        throw new Error('Supabase env vars are not configured');
+      }
+      this._supabase = createClient(url, serviceKey);
+    }
+    return this._supabase;
   }
 
   // Core email sending function
